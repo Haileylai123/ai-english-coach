@@ -120,12 +120,18 @@ export default function GamesScreen() {
       setMatchAttempts(a => a + 1);
       const [a, b] = sel;
       if (a.type !== b.type && a.key === b.key) {
-        setMatchMatched(new Set([...matchMatched, a.id, b.id]));
+        setMatchMatched(prev => {
+          const next = new Set([...prev, a.id, b.id]);
+          if (next.size >= matchCards.length) {
+            setMatchScore(s => {
+              dispatch({ type: 'ADD_XP', payload: s + 10 });
+              return s + 10;
+            });
+          }
+          return next;
+        });
         setMatchScore(s => s + 10);
         setMatchSelected([]);
-        if (matchMatched.size + 2 >= matchCards.length) {
-          dispatch({ type: 'ADD_XP', payload: matchScore + 10 });
-        }
       } else {
         setTimeout(() => setMatchSelected([]), 600);
       }
@@ -165,12 +171,16 @@ export default function GamesScreen() {
     const w = scrambleWords[scrambleIdx];
     if (!w) return;
     const ok = scrambleInput.toLowerCase().trim() === w.answer;
-    if (ok) setScrambleScore(s => s + 15); else setScrambleScore(s => Math.max(0, s - 5));
+    const delta = ok ? 15 : -5;
+    setScrambleScore(s => s + delta);
     setScrambleFB(ok ? '✅ 正確！' : `❌ 答案：${w.answer}`);
     setTimeout(() => {
       if (scrambleIdx >= scrambleWords.length - 1) {
-        dispatch({ type: 'ADD_XP', payload: scrambleScore + (ok ? 15 : -5) });
-        Alert.alert('遊戲結束！', `得分: ${scrambleScore + (ok ? 15 : -5)}`);
+        setScrambleScore(final => {
+          dispatch({ type: 'ADD_XP', payload: final + delta });
+          Alert.alert('遊戲結束！', `得分: ${final + delta}`);
+          return final;
+        });
         setGame('menu');
       } else {
         setScrambleIdx(i => i + 1); setScrambleInput(''); setScrambleFB('');
@@ -192,12 +202,16 @@ export default function GamesScreen() {
     const r = qfRounds[qfIdx];
     if (!r) return;
     const ok = qfInput.toLowerCase().trim() === r.answer.toLowerCase().trim();
-    if (ok) setQfScore(s => s + 10);
+    const delta = ok ? 10 : 0;
+    if (ok) setQfScore(s => s + delta);
     setQfFB(ok ? '✅ 正確！' : `❌ 答案：${r.answer}`);
     setTimeout(() => {
       if (qfIdx >= qfRounds.length - 1) {
-        dispatch({ type: 'ADD_XP', payload: qfScore + (ok ? 10 : 0) });
-        Alert.alert('遊戲結束！', `得分: ${qfScore + (ok ? 10 : 0)}`);
+        setQfScore(final => {
+          dispatch({ type: 'ADD_XP', payload: final + delta });
+          Alert.alert('遊戲結束！', `得分: ${final + delta}`);
+          return final;
+        });
         setGame('menu');
       } else {
         setQfIdx(i => i + 1); setQfInput(''); setQfFB('');

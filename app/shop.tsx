@@ -53,7 +53,7 @@ const ITEMS: Item[] = [
   { id: 'fluffy-hat', name: '毛絨帽', nameEn: 'Fluffy Hat', icon: 'fluffy-hat', price: 150, category: 'outfit' },
   { id: 'ocean-hug', name: '海洋圍巾', nameEn: 'Ocean Hug', icon: 'ocean-hug', price: 150, category: 'outfit' },
   { id: 'glasses', name: '眼鏡', nameEn: 'Glasses', icon: 'glasses', price: 150, category: 'outfit' },
-  { id: 'yarn-ball', name: '毛線球', nameEn: 'Yarn Ball Toy', icon: 'yarn-ball', price: 150, category: 'outfit' },
+  { id: 'yarn-ball', name: '背包', nameEn: 'Backpack', icon: 'yarn-ball', price: 150, category: 'outfit' },
   { id: 'collar', name: '頸圈', nameEn: 'Collar', icon: 'collar', price: 150, category: 'outfit' },
   // Backgrounds
   { id: 'garden', name: '花園', nameEn: 'Garden', icon: 'garden', price: 150, category: 'background' },

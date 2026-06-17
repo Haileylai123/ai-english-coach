@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image, Animated, Easing, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useStore } from '../../services/store';
+import { useI18n } from '../../services/i18n';
+import { ACHIEVEMENTS } from '../../services/emotions';
 
 const { width: W } = Dimensions.get('window');
 const F = { fontFamily: 'Nunito_400Regular' };
@@ -53,16 +55,22 @@ const OUTFITS: Record<string, string> = {
   'backpack': '🎒', 'crown': '👑',
 };
 
-const BG_COLORS: Record<string, { bg: string; wall: string; floor: string; icon: string; name: string }> = {
-  garden: { bg: '#e8f5e9', wall: '#c8e6c9', floor: '#a5d6a7', icon: '🌻', name: '花園 Garden' },
-  cozy: { bg: '#fff3e0', wall: '#ffe0b2', floor: '#ffcc80', icon: '🏠', name: '溫馨小屋 Cozy Room' },
-  beach: { bg: '#e0f7fa', wall: '#b2ebf2', floor: '#ffe082', icon: '🏖️', name: '海灘 Beach' },
-  forest: { bg: '#e8f5e9', wall: '#a5d6a7', floor: '#795548', icon: '🌲', name: '森林 Forest' },
-  space: { bg: '#1a1a2e', wall: '#16213e', floor: '#0f3460', icon: '🌌', name: '太空 Space' },
+const BG_COLORS: Record<string, { bg: string; wall: string; floor: string; name: string }> = {
+  garden: { bg: '#e8f5e9', wall: '#c8e6c9', floor: '#a5d6a7', name: 'Garden' },
+  cozy: { bg: '#fff3e0', wall: '#ffe0b2', floor: '#ffcc80', name: 'Cozy Room' },
+  beach: { bg: '#e0f7fa', wall: '#b2ebf2', floor: '#ffe082', name: 'Beach' },
+  forest: { bg: '#e8f5e9', wall: '#a5d6a7', floor: '#795548', name: 'Forest' },
 };
 
-const FURN_MAP: Record<string, string> = {
-  'ball': '⚽', 'bowl': '🥣', 'rug': '🟫', 'plant': '🪴', 'bed': '🛏️', 'tree': '🌳', 'bookshelf': '📚',
+const FURN_IMG: Record<string, any> = {
+  'ball': require('../../assets/icons/fur-ball-v2.png'),
+  'bowl': require('../../assets/icons/fur-bowl-v2.png'),
+  'rug': require('../../assets/icons/fur-rug-v2.png'),
+  'plant': require('../../assets/icons/fur-plant.png'),
+  'bed': require('../../assets/icons/fur-bed-v2.png'),
+  'bed-orig': require('../../assets/icons/fur-smallbed.png'),
+  'tree': require('../../assets/icons/fur-cattree-v2.png'),
+  'bookshelf': require('../../assets/icons/fur-bookshelf-v2.png'),
 };
 
 type Tab = 'pets' | 'trophies' | 'history';
@@ -70,10 +78,19 @@ type Tab = 'pets' | 'trophies' | 'history';
 export default function WorldScreen() {
   const { state, dispatch } = useStore();
   const router = useRouter();
+  const { t } = useI18n();
   const [tab, setTab] = useState<Tab>('pets');
   const [showPets, setShowPets] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(state.petName);
+
+  // Pet decay every 60s
+  useEffect(() => {
+    const id = setInterval(() => {
+      dispatch({ type: 'PET_DECAY' });
+    }, 60000);
+    return () => clearInterval(id);
+  }, [dispatch]);
 
   // Floating animation for the cat
   const floatY = useRef(new Animated.Value(0)).current;
@@ -137,6 +154,22 @@ export default function WorldScreen() {
         </View>
       </View>
 
+      {/* Tab switcher */}
+      <View style={st.tabSwitcher}>
+        {(['pets', 'trophies', 'history'] as Tab[]).map(tk => (
+          <TouchableOpacity
+            key={tk}
+            style={[st.tabBtn, tab === tk && st.tabBtnOn]}
+            onPress={() => setTab(tk)}
+            activeOpacity={0.85}
+          >
+            <Text style={[st.tabBtnTxt, tab === tk && st.tabBtnTxtOn, FB]}>
+              {tk === 'pets' ? 'Pets' : tk === 'trophies' ? 'Trophies' : 'History'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <ScrollView contentContainerStyle={st.body} showsVerticalScrollIndicator={false}>
         {tab === 'pets' && (
           <>
@@ -154,7 +187,9 @@ export default function WorldScreen() {
               </Animated.View>
               <View style={st.furnLayer}>
                 {state.petFurniture.slice(0, 3).map((f, i) => (
-                  <Text key={i} style={[st.furn, { left: 12 + i * 38, bottom: 8 }]}>{FURN_MAP[f] || '✨'}</Text>
+                  FURN_IMG[f] ? (
+                    <Image key={i} source={FURN_IMG[f]} style={[st.furnImg, { left: 12 + i * 38, bottom: 6 }]} resizeMode="contain" />
+                  ) : null
                 ))}
               </View>
             </View>
@@ -171,7 +206,7 @@ export default function WorldScreen() {
                     autoFocus
                     maxLength={16}
                     style={[st.petNameInput, FX]}
-                    placeholder={state.petName}
+                    placeholder="Pet name"
                     placeholderTextColor={MUTED}
                   />
                 ) : (
@@ -200,9 +235,9 @@ export default function WorldScreen() {
 
             {/* Action buttons (3 buttons) */}
             <View style={st.actionsRow}>
-              <ActionBtn label="Feed" img={FEED_BOWL_SRC} sub="+Hunger" onPress={() => dispatch({ type: 'ADD_PET_COINS', payload: -1 })} />
-              <ActionBtn label="Play" img={PLAY_YARN_SRC} sub="+Happy" onPress={() => dispatch({ type: 'ADD_PET_COINS', payload: -1 })} />
-              <ActionBtn label="Sleep" img={SLEEP_BED_SRC} sub="+Energy" onPress={() => dispatch({ type: 'ADD_PET_COINS', payload: -1 })} />
+              <ActionBtn label="Feed" img={FEED_BOWL_SRC} sub="+Hunger" onPress={() => dispatch({ type: 'FEED_PET' })} />
+              <ActionBtn label="Play" img={PLAY_YARN_SRC} sub="+Love" onPress={() => dispatch({ type: 'PLAY_PET' })} />
+              <ActionBtn label="Sleep" img={SLEEP_BED_SRC} sub="+Energy" onPress={() => dispatch({ type: 'SLEEP_PET' })} />
             </View>
 
             {/* Pet selector toggle */}
@@ -263,13 +298,19 @@ export default function WorldScreen() {
 
         {tab === 'trophies' && (
           <View style={st.trophyCard}>
-            <Text style={[st.secTitle, FB]}>🏆 成就徽章</Text>
-            {['🌸 初次開口', '💪 十句達人', '💼 商務精英', '🎯 雅思達人', '💬 聊天高手', '📚 詞彙大師', '💨 流利達人', '🔊 發音之星', '🔥 三天連續', '🌟 七日王者'].map((a, i) => (
-              <View key={i} style={st.trophyRow}>
-                <Text style={st.trophyIcon}>{state.unlockedAchievements.length > i ? '🏆' : '🔒'}</Text>
-                <Text style={[st.trophyText, F, state.unlockedAchievements.length <= i && st.trophyLocked]}>{a}</Text>
-              </View>
-            ))}
+            <Text style={[st.secTitle, FB]}>Trophies · 成就</Text>
+            {ACHIEVEMENTS.map(a => {
+              const unlocked = state.unlockedAchievements.includes(a.id);
+              return (
+                <View key={a.id} style={st.trophyRow}>
+                  <Text style={st.trophyIcon}>{unlocked ? a.icon : '🔒'}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[st.trophyText, F, !unlocked && st.trophyLocked]}>{a.name}</Text>
+                    <Text style={[st.trophyDesc, F, !unlocked && st.trophyLocked]}>{a.description}</Text>
+                  </View>
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -355,6 +396,21 @@ const st = StyleSheet.create({
   outfit: { fontSize: 22, position: 'absolute', top: -14, right: -28 },
   furnLayer: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 40 },
   furn: { position: 'absolute', fontSize: 18, opacity: 0.85 },
+  furnImg: { position: 'absolute', width: 36, height: 36 },
+
+  // Tab switcher
+  tabSwitcher: {
+    flexDirection: 'row',
+    marginHorizontal: SIDE_PAD,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 4,
+  },
+  tabBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10 },
+  tabBtnOn: { backgroundColor: PINK },
+  tabBtnTxt: { fontSize: 12, color: SUBINK },
+  tabBtnTxtOn: { color: '#fff' },
 
   // Name + mood
   nameRow: {
@@ -444,9 +500,10 @@ const st = StyleSheet.create({
   // Trophies
   trophyCard: { backgroundColor: '#fff', borderRadius: 18, padding: 16 },
   secTitle: { fontSize: 15, color: INK, marginBottom: 12 },
-  trophyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-  trophyIcon: { fontSize: 18 },
-  trophyText: { fontSize: 13, color: INK },
+  trophyRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f5e8de' },
+  trophyIcon: { fontSize: 24 },
+  trophyText: { fontSize: 13, color: INK, fontWeight: '700', marginBottom: 2 },
+  trophyDesc: { fontSize: 11, color: SUBINK },
   trophyLocked: { color: '#ccc' },
 
   // History

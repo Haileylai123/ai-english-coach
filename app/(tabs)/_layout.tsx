@@ -8,7 +8,7 @@ const MUTED = '#b8a89a';
 const ICON_SRC: Record<string, any> = {
   chat: require('../../assets/icons/nav-chat.png'),
   world: require('../../assets/icons/nav-world.png'),
-  learn: require('../../assets/icons/stat-medal.png'),
+  learn: require('../../assets/icons/fur-bookshelf-v2.png'),
   vocab: require('../../assets/icons/stat-vocabulary.png'),
   games: require('../../assets/icons/nav-games.png'),
   stats: require('../../assets/icons/nav-stats.png'),

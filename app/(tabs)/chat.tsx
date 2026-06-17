@@ -11,8 +11,6 @@ import { getRandomEmotion } from '../../services/emotions';
 import WordPickerModal from '../../components/WordPickerModal';
 import * as Speech from 'expo-speech';
 
-const STAT_FLASH_ICON = require('../../assets/icons/stat-fluency.png');
-
 const { width: W } = Dimensions.get('window');
 const F = { fontFamily: 'Nunito_400Regular' };
 const FB = { fontFamily: 'Nunito_700Bold' };
@@ -100,8 +98,7 @@ export default function ChatScreen() {
     dispatch({ type: 'ADD_ANALYSIS', payload: r });
     dispatch({ type: 'ADD_XP', payload: 10 + Math.floor(r.overall.score / 10) });
     setEmotion(getRandomEmotion('complete'));
-    const e = r.overall.score >= 80 ? '🌟' : r.overall.score >= 60 ? '👍' : '💪';
-    setMsg(`${e} ${r.overall.score}/100 · ${r.overall.level}`);
+    setMsg(`${r.overall.score}/100 · ${r.overall.level}`);
     Speech.speak(r.overall.detail, { language: 'en', rate: 0.85 });
   };
 

@@ -16,8 +16,6 @@ const STAT_LEVEL = require('../../assets/icons/stat-level.png');
 const STAT_STREAK = require('../../assets/icons/stat-streak.png');
 const STAT_XP = require('../../assets/icons/stat-xp.png');
 const STAT_STAR = require('../../assets/icons/stat-star.png');
-const STAT_BOOKS = require('../../assets/icons/fur-bookshelf.png');
-const STAT_MIC = require('../../assets/icons/acc-bowtie.png');
 const COIN_SRC = require('../../assets/icons/nav-shop.png');
 
 const { width: W } = Dimensions.get('window');
@@ -152,11 +150,7 @@ export default function StatsScreen() {
         </View>
         <View style={s.recentCard}>
           {recentHistory.length === 0 ? (
-            <>
-              <Text style={s.recentLine}>Excellent choice. Let's start with a natural greeting !</Text>
-              <Text style={s.recentSub}>I want to practice greeting and introducing out service</Text>
-              <Text style={s.recentSub}>Great! What would you like to focus on in your meeting?</Text>
-            </>
+            <Text style={s.recentSub}>未有練習，去 Chat tab 開始第一次啦！</Text>
           ) : (
             recentHistory.map((r, i) => (
               <Text key={i} style={s.recentSub} numberOfLines={1}>
@@ -227,7 +221,6 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  titleStarTxt: { fontSize: 22 },
 
   // XP / Level
   xpCard: {

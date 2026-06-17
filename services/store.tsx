@@ -101,6 +101,10 @@ type Action =
   | { type: 'EQUIP_BG'; payload: string | null }
   | { type: 'ADD_FURNITURE'; payload: string }
   | { type: 'ADD_PET_COINS'; payload: number }
+  | { type: 'FEED_PET' }
+  | { type: 'PLAY_PET' }
+  | { type: 'SLEEP_PET' }
+  | { type: 'PET_DECAY' }
   | { type: 'ADD_CUSTOM_VOCAB'; payload: { en: string; zh?: string; context?: string; source: 'chat' | 'manual' } }
   | { type: 'REMOVE_CUSTOM_VOCAB'; payload: string }
   | { type: 'COMPLETE_LESSON'; payload: { courseId: string; lessonId: string } }
@@ -111,7 +115,7 @@ type Action =
 const initialState: AppState = {
   scene: 'daily',
   difficulty: 'beginner',
-  sessionCount: 1,
+  sessionCount: 0,
   totalSpeeches: 0,
   totalWords: 0,
   businessCount: 0, ieltsCount: 0, dailyCount: 0,
@@ -232,7 +236,41 @@ function reducer(state: AppState, action: Action): AppState {
     case 'ADD_FURNITURE':
       return { ...state, petFurniture: [...state.petFurniture, action.payload] };
     case 'ADD_PET_COINS':
-      return { ...state, petCoins: state.petCoins + action.payload };
+      return { ...state, petCoins: Math.max(0, state.petCoins + action.payload) };
+    case 'FEED_PET': {
+      // Cost 1 coin, +25 hunger (cap 100), +5 intimacy, -10 energy
+      return {
+        ...state,
+        petCoins: Math.max(0, state.petCoins - 1),
+        petHunger: Math.min(100, state.petHunger + 25),
+        petIntimacy: Math.min(100, state.petIntimacy + 5),
+      };
+    }
+    case 'PLAY_PET': {
+      // Cost 1 coin, +15 intimacy, -10 hunger, -5 energy
+      return {
+        ...state,
+        petCoins: Math.max(0, state.petCoins - 1),
+        petIntimacy: Math.min(100, state.petIntimacy + 15),
+        petHunger: Math.max(0, state.petHunger - 10),
+      };
+    }
+    case 'SLEEP_PET': {
+      // Cost 0, restore energy proxy by +20 hunger (energy is derived)
+      return {
+        ...state,
+        petHunger: Math.min(100, state.petHunger + 20),
+        petIntimacy: Math.min(100, state.petIntimacy + 2),
+      };
+    }
+    case 'PET_DECAY': {
+      // Slow decay: hunger -2, intimacy -1
+      return {
+        ...state,
+        petHunger: Math.max(0, state.petHunger - 2),
+        petIntimacy: Math.max(0, state.petIntimacy - 1),
+      };
+    }
     case 'ADD_CUSTOM_VOCAB': {
       const en = action.payload.en.trim().toLowerCase();
       if (!en) return state;
