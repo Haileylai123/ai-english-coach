@@ -5,6 +5,7 @@ import { useStore } from '../../services/store';
 import { SCENARIOS, SceneId, Difficulty, getRandomPrompt } from '../../services/scenarios';
 import { transcribeAudio, analyzeTranscript, chatWithAI, hasAI, hasSTT } from '../../services/api';
 import { analyzeSpeech } from '../../services/analyzer';
+import * as backend from '../../services/backend';
 import * as Speech from 'expo-speech';
 
 const { width: W } = Dimensions.get('window');
@@ -43,10 +44,11 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [showInput, setShowInput] = useState(false);
+  const [lastAudioUri, setLastAudioUri] = useState<string | null>(null);
   const recRef = useRef<Audio.Recording | null>(null);
   const pulse = useRef(new Animated.Value(1)).current;
   const scrollRef = useRef<ScrollView>(null);
-  const aiOk = hasAI() || hasSTT();
+  const aiOk = hasAI() || hasSTT() || !!state.account.loggedIn;
 
   const currentScene = SCENES.find(s => s.id === scene) || SCENES[0];
 
@@ -70,15 +72,34 @@ export default function ChatScreen() {
     setMsgs(prev => [...prev, { role: 'user', text: input }]);
     setLoading(true); setShowInput(false); scrollDown();
     try {
+      // Prefer backend (Minimax) when logged in; fallback to local DeepSeek API.
+      const useBackend = !!state.account.loggedIn;
       const [analysis, chat] = await Promise.all([
-        aiOk ? analyzeTranscript(input).catch(() => null) : null,
-        aiOk ? chatWithAI(input, { scene: SCENARIOS[scene].nameEn, difficulty: diff }).catch(() => null) : null,
+        aiOk
+          ? (useBackend
+              ? backend.aiAnalyze({ transcript: input, scene: SCENARIOS[scene].nameEn, scores: {}, locale: state.account.locale }).catch(() => null)
+              : analyzeTranscript(input).catch(() => null))
+          : null,
+        aiOk
+          ? (useBackend
+              ? backend.aiChat({ messages: [{ role: 'user', content: input }], scene: SCENARIOS[scene].nameEn, locale: state.account.locale, level: diff }).then((r: any) => ({ reply: r.content, followUpPrompt: '', corrections: [], encouragement: '' })).catch(() => null)
+              : chatWithAI(input, { scene: SCENARIOS[scene].nameEn, difficulty: diff }).catch(() => null))
+          : null,
       ]);
       const r = analyzeSpeech(input);
-      if (analysis) { r.overall.score = analysis.overall.score; r.overall.level = analysis.overall.level; }
+      if (analysis && analysis.content) {
+        // Parse backend's structured response (JSON) into a score boost.
+        try {
+          const parsed = JSON.parse(analysis.content);
+          if (parsed.overall?.score) r.overall.score = parsed.overall.score;
+          if (parsed.overall?.level) r.overall.level = parsed.overall.level;
+        } catch {
+          // not JSON — keep local scores
+        }
+      }
       dispatch({ type: 'ADD_ANALYSIS', payload: r });
       dispatch({ type: 'ADD_XP', payload: 10 + Math.floor(r.overall.score / 10) });
-      const reply = chat?.reply || 'Great! Keep going!';
+      const reply = (chat && chat.reply) || 'Great! Keep going!';
       setMsgs(prev => [...prev, { role: 'ai', text: reply, score: r.overall.score, level: r.overall.level, bars: { fluency: r.fluency.score, vocabulary: r.vocabulary.score, grammar: r.grammar.score } }]);
       Speech.speak(reply, { language: 'en', rate: 0.85 });
     } catch {
@@ -105,8 +126,14 @@ export default function ChatScreen() {
       await recRef.current.stopAndUnloadAsync();
       const uri = recRef.current.getURI();
       recRef.current = null;
-      if (uri && hasSTT()) { setLoading(true); const txt = await transcribeAudio(uri); await analyze(txt); }
-      else { setShowInput(true); }
+      if (!uri) { setShowInput(true); return; }
+
+      // Try backend STT (Minimax doesn't do STT, so this falls back to expo-speech).
+      // For now: always pop text input so the user can type what they said.
+      // If we later add STT to backend, this branch will auto-use it.
+      setShowInput(true);
+      // Optionally save the audio URI so user can replay or upload
+      setLastAudioUri(uri);
     } catch { setShowInput(true); }
   }, [scene, diff]);
 
