@@ -298,6 +298,20 @@ export default function SettingsScreen() {
         {/* Account (Cloudflare backend) */}
         <View style={s.section}>
           <Text style={s.sectionTitle}>☁️ {locale === 'en' ? 'Account' : locale === 'zh-CN' ? '账户' : '帳戶'}</Text>
+          {!state.account.loggedIn && (
+            <TouchableOpacity
+              style={[s.upgradeBtn, { backgroundColor: PINK }]}
+              onPress={() => router.push('/auth')}
+              activeOpacity={0.85}
+            >
+              <Text style={s.upgradeBtnTxt}>
+                {locale === 'en' ? '🔐 Login / Sign up' : locale === 'zh-CN' ? '🔐 登录 / 注册' : '🔐 登入 / 開新帳號'}
+              </Text>
+              <Text style={s.upgradeBtnSub}>
+                {locale === 'en' ? 'Required for AI voice + chat' : locale === 'zh-CN' ? '使用 AI 语音和聊天' : '用 AI 語音同傾偈'}
+              </Text>
+            </TouchableOpacity>
+          )}
           {state.account.loggedIn ? (
             <>
               <View style={s.petInfoRow}>

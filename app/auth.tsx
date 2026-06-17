@@ -4,6 +4,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityInd
 import { useRouter } from 'expo-router';
 import { useStore } from '../services/store';
 import * as api from '../services/api';
+import * as backend from '../services/backend';
 import { useI18n } from '../services/i18n';
 
 const PINK = '#e8927f';
@@ -41,7 +42,10 @@ export default function AuthScreen() {
     }
     setLoading(true);
     try {
-      const user = mode === 'login' ? await api.login(email, password) : await api.register(email, password, displayName || undefined);
+      // Always use backend (Cloudflare + Minimax). api.login was a local stub.
+      const user = mode === 'login'
+        ? await backend.login(email.trim().toLowerCase(), password)
+        : await backend.register(email.trim().toLowerCase(), password, displayName || undefined);
       dispatch({ type: 'SET_ACCOUNT', payload: { loggedIn: true, user: { id: user.id, email: user.email, displayName: user.display_name, tier: user.tier || 'free' } } });
       Alert.alert(
         isEn ? 'Welcome!' : isCn ? '欢迎！' : '歡迎！',
