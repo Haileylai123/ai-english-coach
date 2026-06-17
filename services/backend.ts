@@ -171,6 +171,58 @@ export async function sendTestPush(): Promise<{ sent: number; errors: number }> 
   return await request('/api/notifications/test', { method: 'POST', body: {} });
 }
 
+// ── Speech-to-Text via backend (Cloudflare Workers AI Whisper) ──
+
+export interface SttResult {
+  text: string;
+  language?: string;
+  durationMs?: number | null;
+}
+
+/**
+ * Upload an audio file URI to the backend Whisper endpoint.
+ * Works on .m4a / .mp4 / .wav / .webm / .mp3 — whatever expo-av produces.
+ */
+export async function transcribeViaBackend(
+  audioUri: string,
+  language: string = 'en',
+): Promise<SttResult> {
+  const ext = audioUri.split('.').pop()?.toLowerCase() || 'm4a';
+  const mimeMap: Record<string, string> = {
+    m4a: 'audio/mp4',
+    mp4: 'audio/mp4',
+    wav: 'audio/wav',
+    webm: 'audio/webm',
+    mp3: 'audio/mpeg',
+  };
+  const mime = mimeMap[ext] || 'audio/mp4';
+
+  const form = new FormData();
+  form.append('audio', {
+    uri: audioUri,
+    type: mime,
+    name: `recording.${ext}`,
+  } as any);
+  form.append('language', language);
+
+  const res = await fetch(`${API_BASE}/api/stt/transcribe`, {
+    method: 'POST',
+    headers: {
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+    body: form,
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`STT failed (${res.status}): ${errText.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  if (!data.text) throw new Error('No speech detected');
+  return { text: data.text, language: data.language, durationMs: data.durationMs };
+}
+
 // ── Text-to-Speech (Minimax via backend) ──
 
 export type TtsVoiceKey =

@@ -121,27 +121,51 @@ export default function ChatScreen() {
 
   const stopRec = useCallback(async () => {
     setRecording(false);
-    if (!recRef.current) { setShowInput(true); return; }
+    if (!recRef.current) { return; }
     try {
-      // Wait briefly — if duration < 300ms, treat as accidental press and reopen input
       const status = await recRef.current.getStatusAsync();
       const durMs = status?.durationMillis ?? 0;
       await recRef.current.stopAndUnloadAsync();
       const uri = recRef.current.getURI();
       recRef.current = null;
 
-      if (!uri || durMs < 300) {
-        // Accidental tap — just reopen text input
+      if (!uri || durMs < 400) {
+        // Accidental tap — just reopen input
         setShowInput(true);
         return;
       }
 
-      // Save audio + always pop text input (no STT key configured).
-      // When backend gains STT, swap this for: const txt = await backend.transcribeAudio(uri); await analyze(txt);
+      // If logged in, try backend Whisper STT. Falls back to text input if it fails.
+      if (state.account.loggedIn) {
+        setLoading(true);
+        try {
+          const lang = state.account.locale?.startsWith('zh') ? 'zh' : 'en';
+          const r = await backend.transcribeViaBackend(uri, lang);
+          if (r.text && r.text.trim()) {
+            await analyze(r.text.trim());
+            return;
+          }
+        } catch (e: any) {
+          // Show error briefly, then fall back to text input with audio URI saved
+          setLastAudioUri(uri);
+          setShowInput(true);
+          Alert.alert(
+            state.locale === 'zh-HK' ? '語音識別失敗' : 'Speech recognition failed',
+            e?.message || 'Please type what you said',
+          );
+          setLoading(false);
+          return;
+        }
+        setLoading(false);
+      }
+
+      // Not logged in OR STT returned empty — fall back to text input
       setLastAudioUri(uri);
       setShowInput(true);
-    } catch { setShowInput(true); }
-  }, [scene, diff]);
+    } catch {
+      setShowInput(true);
+    }
+  }, [scene, diff, state.account.loggedIn, state.account.locale, state.locale]);
 
   // Tap-to-toggle fallback for users who don't want hold-to-record
   const toggleRec = useCallback(async () => {
