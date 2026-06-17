@@ -176,6 +176,7 @@ export async function sendTestPush(): Promise<{ sent: number; errors: number }> 
 export type TtsVoiceKey =
   | 'en_warm_man'
   | 'en_warm_woman'
+  | 'en_upbeat_woman'
   | 'en_excited_man'
   | 'zh_male'
   | 'zh_female'
@@ -191,7 +192,8 @@ export interface TtsVoice {
 export const TTS_VOICES: TtsVoice[] = [
   { key: 'en_warm_woman', id: 'English_Graceful_Lady', label: 'Grace (English, warm woman)', language: 'en' },
   { key: 'en_warm_man', id: 'English_Trustworth_Man', label: 'Caleb (English, warm man)', language: 'en' },
-  { key: 'en_excited_man', id: 'English_PassionateWarrior', label: 'Marcus (English, energetic)', language: 'en' },
+  { key: 'en_upbeat_woman', id: 'English_Upbeat_Woman', label: 'Upbeat (English, energetic woman)', language: 'en' },
+  { key: 'en_excited_man', id: 'English_PassionateWarrior', label: 'Marcus (English, energetic man)', language: 'en' },
   { key: 'zh_female', id: 'female-shaonv', label: '小柔 (廣東話/中文, 女)', language: 'zh' },
   { key: 'zh_male', id: 'male-qn-qingse', label: '小青 (中文, 男)', language: 'zh' },
   { key: 'zh_business', id: 'presenter_male', label: '主播 (中文, 專業)', language: 'zh' },
