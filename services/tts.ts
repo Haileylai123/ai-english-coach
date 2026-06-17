@@ -1,16 +1,17 @@
-// services/tts.ts — Play TTS audio via expo-av with cache + queue
-// Falls back to expo-speech if backend unreachable
+// services/tts.ts — Play TTS audio cross-platform (Web + iOS/Android)
+// Uses native <audio> element on web, expo-av on native. Falls back to expo-speech.
 
-import { Audio } from 'expo-av';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchTtsAudio, type TtsVoiceKey, TTS_VOICES } from './backend';
 
-let sound: Audio.Sound | null = null;
-let queue: string[] = [];
-let isPlaying = false;
-
-const QUEUE_KEY = 'tts_pending_queue';
 const VOICE_KEY = 'tts_voice_pref';
+
+// Single global HTML <audio> element on web — Safari/Chrome both support it natively
+let webAudioEl: HTMLAudioElement | null = null;
+
+// expo-av Audio.Sound (native only)
+let nativeSound: any = null;
 
 export async function getPreferredVoice(): Promise<TtsVoiceKey> {
   try {
@@ -32,13 +33,13 @@ export async function speak(
 ): Promise<void> {
   if (!text || !text.trim()) return;
   const voice = voiceKey || (await getPreferredVoice());
-  console.log('[TTS] speak called — text length:', text.length, 'voice:', voice);
+  console.log('[TTS] speak — text length:', text.length, 'voice:', voice, 'platform:', Platform.OS);
 
   try {
     const audioUri = await fetchTtsAudio(text, voice, opts?.speed ?? 1.0);
-    console.log('[TTS] got audio URI from backend:', audioUri.slice(0, 60));
+    console.log('[TTS] got audio:', audioUri.slice(0, 60));
     await playAudioUri(audioUri, opts);
-    console.log('[TTS] playing Minimax audio ✅');
+    console.log('[TTS] playing ✅');
   } catch (e: any) {
     console.warn('[TTS] backend failed, falling back to expo-speech:', e?.message);
     if (opts?.onError) opts.onError(e);
@@ -46,7 +47,7 @@ export async function speak(
       const Speech = await import('expo-speech');
       Speech.stop();
       Speech.speak(text, {
-        language: voice.startsWith('zh') ? 'zh-HK' : 'en-US',
+        language: 'en-US',
         rate: opts?.speed ?? 1.0,
         onDone: opts?.onDone,
         onError: () => opts?.onError?.(e),
@@ -62,66 +63,103 @@ async function playAudioUri(
   uri: string,
   opts?: { onStart?: () => void; onDone?: () => void; onError?: (e: Error) => void },
 ): Promise<void> {
-  // Stop any current playback
   await stopAll();
 
-  try {
-    await Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: false,
-      shouldDuckAndroid: true,
-    });
-  } catch {}
+  if (Platform.OS === 'web') {
+    // Use native <audio> element — works on iOS Safari, Chrome, Firefox
+    await playViaWebAudio(uri, opts);
+  } else {
+    // Native (iOS/Android) — use expo-av
+    await playViaNativeAudio(uri, opts);
+  }
+}
 
-  const { sound: newSound } = await Audio.Sound.createAsync(
-    { uri },
-    { shouldPlay: true, progressUpdateIntervalMillis: 200 },
-    (status) => {
-      if (status.isLoaded && status.didJustFinish) {
+async function playViaWebAudio(
+  uri: string,
+  opts?: { onStart?: () => void; onDone?: () => void; onError?: (e: Error) => void },
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      const audio = new window.Audio();
+      audio.preload = 'auto';
+      audio.src = uri;
+      webAudioEl = audio;
+
+      audio.onloadedmetadata = () => {
+        opts?.onStart?.();
+        audio.play().catch((playErr) => {
+          console.warn('[TTS] audio.play() rejected:', playErr?.message);
+          if (opts?.onError) opts.onError(new Error('Audio play was blocked. Tap Test voice again.'));
+          reject(playErr);
+        });
+      };
+      audio.onended = () => {
         opts?.onDone?.();
-        newSound.unloadAsync().catch(() => {});
-      }
-    },
-  );
-  sound = newSound;
-  opts?.onStart?.();
+        webAudioEl = null;
+        resolve();
+      };
+      audio.onerror = (ev) => {
+        const msg = `Audio error: ${audio.error?.message || 'unknown'}`;
+        console.warn('[TTS]', msg);
+        if (opts?.onError) opts.onError(new Error(msg));
+        reject(new Error(msg));
+      };
+    } catch (err: any) {
+      if (opts?.onError) opts.onError(err);
+      reject(err);
+    }
+  });
+}
+
+async function playViaNativeAudio(
+  uri: string,
+  opts?: { onStart?: () => void; onDone?: () => void; onError?: (e: Error) => void },
+): Promise<void> {
+  try {
+    const { Audio } = await import('expo-av');
+    try {
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, shouldDuckAndroid: true });
+    } catch {}
+
+    const { sound } = await Audio.Sound.createAsync(
+      { uri },
+      { shouldPlay: true },
+      (status: any) => {
+        if (status.isLoaded && status.didJustFinish) {
+          opts?.onDone?.();
+          sound.unloadAsync().catch(() => {});
+        }
+      },
+    );
+    nativeSound = sound;
+    opts?.onStart?.();
+  } catch (err: any) {
+    if (opts?.onError) opts.onError(err);
+    throw err;
+  }
 }
 
 export async function stopAll(): Promise<void> {
-  if (sound) {
-    try { await sound.stopAsync(); await sound.unloadAsync(); } catch {}
-    sound = null;
+  if (webAudioEl) {
+    try { webAudioEl.pause(); webAudioEl.src = ''; } catch {}
+    webAudioEl = null;
+  }
+  if (nativeSound) {
+    try { await nativeSound.stopAsync(); await nativeSound.unloadAsync(); } catch {}
+    nativeSound = null;
   }
 }
 
 export async function pause(): Promise<void> {
-  if (sound) {
-    try { await sound.pauseAsync(); } catch {}
-  }
+  if (webAudioEl) try { webAudioEl.pause(); } catch {}
+  if (nativeSound) try { await nativeSound.pauseAsync(); } catch {}
 }
 
 export async function resume(): Promise<void> {
-  if (sound) {
-    try { await sound.playAsync(); } catch {}
-  }
+  if (webAudioEl) try { await webAudioEl.play(); } catch {}
+  if (nativeSound) try { await nativeSound.playAsync(); } catch {}
 }
 
 export function isSpeaking(): boolean {
-  return !!sound;
-}
-
-/** Queue text for sequential playback (used for multi-paragraph reads). */
-export function enqueue(text: string): void {
-  queue.push(text);
-  if (!isPlaying) playQueue();
-}
-
-async function playQueue(): Promise<void> {
-  if (!queue.length) { isPlaying = false; return; }
-  isPlaying = true;
-  const next = queue.shift()!;
-  await speak(next, undefined, {
-    onDone: () => playQueue(),
-    onError: () => playQueue(),
-  });
+  return !!webAudioEl || !!nativeSound;
 }

@@ -300,8 +300,12 @@ export async function fetchTtsAudio(
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {
-  // React Native's Blob doesn't support FileReader; use expo-file-system to write
-  // to cache dir and return the file:// URI.
+  // Cross-platform: on web, just create a blob URL. On native, write to FS.
+  // @ts-ignore — react-native Blob has different methods than web Blob
+  if (typeof window !== 'undefined' && (window as any).URL?.createObjectURL) {
+    return (window as any).URL.createObjectURL(blob);
+  }
+  // Native path
   const FileSystem = require('expo-file-system/legacy');
   const path = `${FileSystem.cacheDirectory}tts-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp3`;
   const reader = new FileReader();
