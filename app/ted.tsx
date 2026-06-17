@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SCENARIOS, getRandomPrompt, Difficulty } from '../services/scenarios';
 import { analyzeSpeech, AnalysisResult } from '../services/analyzer';
@@ -88,7 +88,7 @@ export default function TedScreen() {
     setAnalysis(r);
     dispatch({ type: 'ADD_ANALYSIS', payload: r });
     dispatch({ type: 'ADD_XP', payload: 10 + Math.floor(r.overall.score / 10) });
-    Speech.speak(r.overall.detail, { language: 'en', rate: 0.85 });
+    Speech.speak(r.overall.detail || 'Good job!', { language: 'en', rate: 0.85 });
   };
 
   const close = () => {

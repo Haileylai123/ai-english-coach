@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image, Alert } from 'react-native';
 import { COURSES, Course, Lesson } from '../../services/courses';
 import { useStore } from '../../services/store';
 
@@ -17,6 +17,7 @@ const CREAM = '#fdf2ec';
 const INK = '#3d3028';
 const SUBINK = '#7a6a5e';
 const MUTED = '#b8a89a';
+const GREEN = '#7ec48b';
 
 const LEVEL_COLOR: Record<string, string> = {
   beginner: '#7ec48b',
@@ -30,14 +31,6 @@ const LEVEL_LABEL: Record<string, string> = {
   advanced: '高級',
 };
 
-const TYPE_ICON: Record<string, string> = {
-  reading: '',
-  speaking: '',
-  vocab: '',
-  quiz: '',
-  listening: '',
-};
-
 const TYPE_LABEL: Record<string, string> = {
   reading: '閱讀',
   speaking: '口說',
@@ -46,13 +39,15 @@ const TYPE_LABEL: Record<string, string> = {
   listening: '聽力',
 };
 
-type View = 'list' | 'course' | 'lesson';
+type LearnView = 'list' | 'course' | 'lesson' | 'quiz' | 'quizResult';
 
 export default function LearnScreen() {
   const { state, dispatch } = useStore();
-  const [view, setView] = useState<View>('list');
+  const [view, setView] = useState<LearnView>('list');
   const [activeCourse, setActiveCourse] = useState<Course | null>(null);
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<number[]>([]);
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
 
   // Stats
   const totalCourses = COURSES.length;
@@ -71,7 +66,11 @@ export default function LearnScreen() {
     }
   };
   const back = () => {
-    if (view === 'lesson') setView('course');
+    if (view === 'quiz' || view === 'quizResult') {
+      setView('lesson');
+      setQuizAnswers([]);
+      setQuizSubmitted(false);
+    } else if (view === 'lesson') setView('course');
     else if (view === 'course') { setView('list'); setActiveCourse(null); }
   };
   const completeLesson = () => {
@@ -79,6 +78,30 @@ export default function LearnScreen() {
       dispatch({ type: 'COMPLETE_LESSON', payload: { courseId: activeCourse.id, lessonId: activeLesson.id } });
     }
   };
+
+  const startQuiz = () => {
+    if (!activeLesson) return;
+    setQuizAnswers(new Array(activeLesson.quiz.length).fill(-1));
+    setQuizSubmitted(false);
+    setView('quiz');
+  };
+
+  const submitQuiz = () => {
+    if (!activeLesson) return;
+    if (quizAnswers.some(a => a < 0)) {
+      Alert.alert('請答晒所有題', '答完所有問題先交卷');
+      return;
+    }
+    setQuizSubmitted(true);
+    setView('quizResult');
+  };
+
+  const quizScore = useMemo(() => {
+    if (!activeLesson || !quizSubmitted) return 0;
+    return activeLesson.quiz.reduce((s, q, i) => s + (quizAnswers[i] === q.ans ? 1 : 0), 0);
+  }, [activeLesson, quizAnswers, quizSubmitted]);
+
+  const quizPass = quizSubmitted && activeLesson ? quizScore >= Math.ceil(activeLesson.quiz.length * 0.6) : false;
 
   return (
     <View style={s.root}>
@@ -91,7 +114,6 @@ export default function LearnScreen() {
       <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         {view === 'list' && (
           <>
-            {/* Title */}
             <View style={s.titleRow}>
               <View style={s.titleIcon}>
                 <Image source={LEARN_ICON} style={{ width: 32, height: 32 }} resizeMode="contain" />
@@ -99,7 +121,6 @@ export default function LearnScreen() {
               <Text style={[s.title, FX]}>Learn</Text>
             </View>
 
-            {/* Progress summary */}
             <View style={s.summaryCard}>
               <View style={s.summaryItem}>
                 <Text style={[s.summaryNum, FX]}>{totalCourses}</Text>
@@ -117,7 +138,6 @@ export default function LearnScreen() {
               </View>
             </View>
 
-            {/* Course list */}
             <Text style={s.section}>所有課程</Text>
             {COURSES.map(c => {
               const prog = state.courseProgress[c.id] || { completed: [], current: null };
@@ -130,11 +150,6 @@ export default function LearnScreen() {
                   activeOpacity={0.85}
                 >
                   <View style={s.courseHead}>
-                    {c.icon ? (
-                      <View style={s.courseIcon}>
-                        <Text style={s.courseIconTxt}>{c.icon}</Text>
-                      </View>
-                    ) : null}
                     <View style={{ flex: 1 }}>
                       <View style={s.courseTitleRow}>
                         <Text style={[s.courseTitle, FB]}>{c.titleEn}</Text>
@@ -145,7 +160,6 @@ export default function LearnScreen() {
                       <Text style={s.courseDesc} numberOfLines={2}>{c.desc}</Text>
                     </View>
                   </View>
-                  {/* Progress bar */}
                   <View style={s.progBarBg}>
                     <View style={[s.progBarFill, { width: `${pct}%` }]} />
                   </View>
@@ -165,9 +179,6 @@ export default function LearnScreen() {
         {view === 'course' && activeCourse && (
           <>
             <View style={s.courseHero}>
-              {activeCourse.icon ? (
-                <Text style={s.heroIcon}>{activeCourse.icon}</Text>
-              ) : null}
               <Text style={[s.heroTitle, FX]}>{activeCourse.titleEn}</Text>
               <Text style={s.heroDesc}>{activeCourse.desc}</Text>
               <View style={[s.levelPill, { backgroundColor: LEVEL_COLOR[activeCourse.level] + '22', alignSelf: 'center', marginTop: 8 }]}>
@@ -198,6 +209,7 @@ export default function LearnScreen() {
                     <View style={s.lessonMeta}>
                       <Text style={s.lessonType}>{TYPE_LABEL[l.type]}</Text>
                       <Text style={s.lessonTime}>· {l.minutes} 分鐘</Text>
+                      {l.quiz.length > 0 && <Text style={s.lessonQuiz}>· 測驗 {l.quiz.length} 題</Text>}
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -210,9 +222,6 @@ export default function LearnScreen() {
           <>
             <View style={s.lessonHero}>
               <View style={s.lessonHeroTop}>
-                {TYPE_ICON[activeLesson.type] ? (
-                  <Text style={s.heroIcon}>{TYPE_ICON[activeLesson.type]}</Text>
-                ) : null}
                 <View style={{ flex: 1 }}>
                   <Text style={s.lessonBreadcrumb}>
                     {activeCourse.titleEn} · {TYPE_LABEL[activeLesson.type]} · {activeLesson.minutes} 分鐘
@@ -222,12 +231,10 @@ export default function LearnScreen() {
               </View>
             </View>
 
-            {/* Content */}
             <View style={s.contentCard}>
               <Text style={s.contentTxt}>{activeLesson.content}</Text>
             </View>
 
-            {/* Vocab */}
             {activeLesson.vocab.length > 0 && (
               <View style={s.vocabCard}>
                 <Text style={s.vocabTitle}>關鍵詞彙</Text>
@@ -243,7 +250,6 @@ export default function LearnScreen() {
               </View>
             )}
 
-            {/* Practice */}
             {activeLesson.practice && (
               <View style={s.practiceCard}>
                 <Text style={s.practiceTitle}>練習 Practice</Text>
@@ -258,19 +264,146 @@ export default function LearnScreen() {
               </View>
             )}
 
-            {/* Complete button */}
-            <TouchableOpacity
-              style={[
-                s.completeBtn,
-                state.courseProgress[activeCourse.id]?.completed.includes(activeLesson.id) && s.completeBtnDone
-              ]}
-              onPress={completeLesson}
-              activeOpacity={0.85}
-            >
-              <Text style={s.completeBtnTxt}>
-                {state.courseProgress[activeCourse.id]?.completed.includes(activeLesson.id) ? '已完成 +5 XP' : '標記為完成 +5 XP'}
-              </Text>
+            {/* Quiz prompt — required before complete */}
+            {activeLesson.quiz.length > 0 && (() => {
+              const isDone = state.courseProgress[activeCourse.id]?.completed.includes(activeLesson.id);
+              return (
+                <View style={s.quizPromptCard}>
+                  <View style={s.quizPromptHead}>
+                    <Text style={s.quizPromptIcon}>📝</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.quizPromptTitle}>課堂測驗</Text>
+                      <Text style={s.quizPromptDesc}>{activeLesson.quiz.length} 題選擇題 · 答對 60% 先可以完成</Text>
+                    </View>
+                  </View>
+                  {isDone ? (
+                    <View style={s.quizPassedRow}>
+                      <Text style={s.quizPassedTxt}>已通過測驗</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity style={s.quizStartBtn} onPress={startQuiz} activeOpacity={0.85}>
+                      <Text style={s.quizStartBtnTxt}>開始測驗</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })()}
+
+            {/* Complete button — only enabled if lesson is already completed */}
+            {state.courseProgress[activeCourse.id]?.completed.includes(activeLesson.id) && (
+              <View style={s.completeBtnDoneRow}>
+                <Text style={s.completeBtnDoneTxt}>已通過 +5 XP</Text>
+              </View>
+            )}
+          </>
+        )}
+
+        {/* QUIZ IN PROGRESS */}
+        {view === 'quiz' && activeLesson && (
+          <>
+            <View style={s.quizHeader}>
+              <Text style={s.quizEyebrow}>課堂測驗</Text>
+              <Text style={[s.quizTitle, FX]}>{activeLesson.title}</Text>
+              <Text style={s.quizSub}>共 {activeLesson.quiz.length} 題 · 答對 60% 先可以完成</Text>
+            </View>
+            {activeLesson.quiz.map((q, i) => (
+              <View key={i} style={s.qCard}>
+                <View style={s.qHead}>
+                  <View style={s.qNum}><Text style={s.qNumTxt}>{i + 1}</Text></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.qTxt}>{q.q}</Text>
+                    <Text style={s.qZh}>{q.qZh}</Text>
+                  </View>
+                </View>
+                <View style={{ marginTop: 10 }}>
+                  {q.opts.map((opt, j) => {
+                    const sel = quizAnswers[i] === j;
+                    return (
+                      <TouchableOpacity
+                        key={j}
+                        style={[s.optRow, sel && s.optRowOn]}
+                        onPress={() => {
+                          setQuizAnswers(prev => prev.map((v, k) => k === i ? j : v));
+                        }}
+                        activeOpacity={0.85}
+                      >
+                        <View style={[s.optDot, sel && s.optDotOn]}>
+                          {sel && <Text style={s.optDotCheck}>✓</Text>}
+                        </View>
+                        <Text style={[s.optTxt, sel && s.optTxtOn]}>{opt}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            ))}
+            <TouchableOpacity style={s.submitBtn} onPress={submitQuiz} activeOpacity={0.85}>
+              <Text style={s.submitBtnTxt}>交卷</Text>
             </TouchableOpacity>
+            <View style={{ height: 40 }} />
+          </>
+        )}
+
+        {/* QUIZ RESULT */}
+        {view === 'quizResult' && activeLesson && (
+          <>
+            <View style={s.resultCard}>
+              <Text style={s.resultIcon}>{quizPass ? '🎉' : '😅'}</Text>
+              <Text style={[s.resultTitle, FX]}>
+                {quizPass ? '恭喜通過！' : '未通過'}
+              </Text>
+              <Text style={s.resultScore}>
+                {quizScore} / {activeLesson.quiz.length}
+              </Text>
+              <Text style={s.resultMsg}>
+                {quizPass
+                  ? `你答對咗 ${Math.round((quizScore / activeLesson.quiz.length) * 100)}% ，可以拎到 5 XP`
+                  : `需要答對至少 ${Math.ceil(activeLesson.quiz.length * 0.6)} 題先可以通過`}
+              </Text>
+            </View>
+
+            {/* Show review */}
+            <Text style={s.section}>答案解析</Text>
+            {activeLesson.quiz.map((q, i) => {
+              const userAns = quizAnswers[i];
+              const correct = userAns === q.ans;
+              return (
+                <View key={i} style={[s.reviewCard, correct ? s.reviewOk : s.reviewBad]}>
+                  <View style={s.reviewHead}>
+                    <Text style={s.reviewNum}>{i + 1}</Text>
+                    <Text style={s.reviewIcon}>{correct ? '✅' : '❌'}</Text>
+                    <Text style={s.reviewQ}>{q.q}</Text>
+                  </View>
+                  {!correct && (
+                    <Text style={s.reviewUser}>你揀咗：{q.opts[userAns] ?? '—'}</Text>
+                  )}
+                  <Text style={s.reviewAns}>正確：{q.opts[q.ans]}</Text>
+                  {q.explain && <Text style={s.reviewExplain}>💡 {q.explain}</Text>}
+                </View>
+              );
+            })}
+
+            {quizPass ? (
+              <TouchableOpacity
+                style={s.claimBtn}
+                onPress={() => { completeLesson(); back(); }}
+                activeOpacity={0.85}
+              >
+                <Text style={s.claimBtnTxt}>拎 5 XP ✓</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={s.retryBtn}
+                onPress={startQuiz}
+                activeOpacity={0.85}
+              >
+                <Text style={s.retryBtnTxt}>再試一次</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={s.backLinkBtn} onPress={back} activeOpacity={0.85}>
+              <Text style={s.backLinkTxt}>返去課堂</Text>
+            </TouchableOpacity>
+            <View style={{ height: 40 }} />
           </>
         )}
 
@@ -342,12 +475,6 @@ const s = StyleSheet.create({
     elevation: 1,
   },
   courseHead: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12, gap: 12 },
-  courseIcon: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: PINK_SOFT,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  courseIconTxt: { fontSize: 26 },
   courseTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8, flexWrap: 'wrap' },
   courseTitle: { fontSize: 16, color: INK },
   levelPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
@@ -362,7 +489,6 @@ const s = StyleSheet.create({
 
   // Course hero
   courseHero: { alignItems: 'center', marginBottom: 18 },
-  heroIcon: { fontSize: 56, marginBottom: 10 },
   heroTitle: { fontSize: 24, color: INK, textAlign: 'center', marginBottom: 6 },
   heroDesc: { fontSize: 13, color: SUBINK, textAlign: 'center', lineHeight: 19, paddingHorizontal: 12 },
 
@@ -385,11 +511,11 @@ const s = StyleSheet.create({
   lessonNumTxt: { fontSize: 14, color: PINK, fontWeight: '800' },
   lessonTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' },
   lessonTitle: { fontSize: 14, color: INK, flex: 1 },
-  lessonCheck: { fontSize: 14, color: '#7ec48b', fontWeight: '800' },
   lessonNow: { fontSize: 9, color: PINK, fontWeight: '800', backgroundColor: PINK_SOFT, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  lessonMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  lessonMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
   lessonType: { fontSize: 11, color: SUBINK, fontWeight: '600' },
   lessonTime: { fontSize: 11, color: MUTED, fontWeight: '500' },
+  lessonQuiz: { fontSize: 11, color: PINK, fontWeight: '700' },
 
   // Lesson view
   lessonHero: { marginBottom: 14 },
@@ -436,18 +562,139 @@ const s = StyleSheet.create({
   hintLab: { fontSize: 11, color: PINK, fontWeight: '800', marginBottom: 2 },
   hintTxt: { fontSize: 12, color: INK, fontStyle: 'italic', lineHeight: 18 },
 
-  completeBtn: {
+  // Quiz prompt card (on lesson view)
+  quizPromptCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 2,
+    borderColor: PINK_SOFT,
+  },
+  quizPromptHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  quizPromptIcon: { fontSize: 24 },
+  quizPromptTitle: { fontSize: 15, color: INK, fontWeight: '800' },
+  quizPromptDesc: { fontSize: 12, color: SUBINK, fontWeight: '500', marginTop: 2 },
+  quizStartBtn: {
+    backgroundColor: PINK,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  quizStartBtnTxt: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  quizPassedRow: {
+    backgroundColor: '#e8f5e9',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  quizPassedTxt: { color: GREEN, fontSize: 13, fontWeight: '800' },
+
+  completeBtnDoneRow: {
+    backgroundColor: '#e8f5e9',
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  completeBtnDoneTxt: { color: GREEN, fontSize: 14, fontWeight: '800' },
+
+  // QUIZ
+  quizHeader: { marginBottom: 16, alignItems: 'center' },
+  quizEyebrow: { fontSize: 11, color: MUTED, fontWeight: '700', letterSpacing: 1, marginBottom: 4 },
+  quizTitle: { fontSize: 22, color: INK, textAlign: 'center', marginBottom: 6 },
+  quizSub: { fontSize: 12, color: SUBINK, fontWeight: '600' },
+
+  qCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+  },
+  qHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  qNum: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: PINK, alignItems: 'center', justifyContent: 'center',
+  },
+  qNumTxt: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  qTxt: { fontSize: 14, color: INK, fontWeight: '700', lineHeight: 20 },
+  qZh: { fontSize: 12, color: SUBINK, fontWeight: '500', marginTop: 2 },
+
+  optRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#fdf6f1',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 6,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    gap: 10,
+  },
+  optRowOn: { backgroundColor: PINK_SOFT, borderColor: PINK },
+  optDot: {
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: '#fff', borderWidth: 2, borderColor: '#e0d0c0',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  optDotOn: { backgroundColor: PINK, borderColor: PINK },
+  optDotCheck: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  optTxt: { flex: 1, fontSize: 14, color: INK, fontWeight: '500' },
+  optTxtOn: { color: PINK, fontWeight: '700' },
+
+  submitBtn: {
     backgroundColor: PINK,
     paddingVertical: 14,
     borderRadius: 16,
     alignItems: 'center',
-    marginTop: 4,
-    shadowColor: PINK,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 2,
+    marginTop: 6,
   },
-  completeBtnDone: { backgroundColor: '#7ec48b' },
-  completeBtnTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  submitBtnTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
+
+  // QUIZ RESULT
+  resultCard: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  resultIcon: { fontSize: 50, marginBottom: 8 },
+  resultTitle: { fontSize: 22, color: INK, marginBottom: 4 },
+  resultScore: { fontSize: 36, color: PINK, fontWeight: '800', marginBottom: 6 },
+  resultMsg: { fontSize: 13, color: SUBINK, textAlign: 'center', lineHeight: 19 },
+
+  reviewCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+  },
+  reviewOk: { borderLeftColor: GREEN },
+  reviewBad: { borderLeftColor: '#e57373' },
+  reviewHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 4 },
+  reviewNum: { fontSize: 12, color: PINK, fontWeight: '800' },
+  reviewIcon: { fontSize: 12 },
+  reviewQ: { flex: 1, fontSize: 13, color: INK, fontWeight: '600' },
+  reviewUser: { fontSize: 12, color: '#e57373', fontWeight: '600', marginTop: 4 },
+  reviewAns: { fontSize: 12, color: GREEN, fontWeight: '700', marginTop: 2 },
+  reviewExplain: { fontSize: 12, color: SUBINK, fontStyle: 'italic', marginTop: 4 },
+
+  claimBtn: {
+    backgroundColor: GREEN,
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  claimBtnTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  retryBtn: {
+    backgroundColor: PINK,
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  retryBtnTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  backLinkBtn: { paddingVertical: 12, alignItems: 'center', marginTop: 4 },
+  backLinkTxt: { color: MUTED, fontSize: 13, fontWeight: '700' },
 });

@@ -1,15 +1,21 @@
 // services/analyzer.ts — Speech analysis engine
-// Fluency · Vocabulary · Pronunciation · Grammar
-// Ported from web version analyzer.js
+// Local heuristics + optional Claude API for deep analysis
 
 export interface AnalysisResult {
-  overall: { score: number; level: string };
+  overall: { score: number; level: string; detail?: string };
   fluency: { score: number; wpm: number; fillerRatio: number; detail: string };
-  vocabulary: { score: number; totalWords: number; uniqueWords: number; cefrLevels: Record<string, number>; detail: string };
+  vocabulary: { score: number; totalWords: number; uniqueWords: number; ttr: number; cefrLevels: Record<string, number>; sceneVocabUsed: number; usedKeyVocab?: string[]; detail: string };
   pronunciation: { score: number; avgConfidence: number; detail: string };
-  grammar: { score: number; avgSentenceLength: number; passiveCount: number; detail: string };
+  grammar: { score: number; avgSentenceLength: number; sentenceCount: number; errorCount: number; passiveCount: number; detail: string };
   timestamp: number;
   transcript: string;
+  /** AI-generated feedback (if Claude API key set) */
+  aiFeedback?: {
+    overall_comment: string;
+    strengths: string[];
+    improvements: string[];
+    next_practice: string;
+  };
 }
 
 // CEFR vocabulary levels (simplified)
@@ -21,11 +27,11 @@ const CEFR: Record<string, Set<string>> = {
   C1: new Set(['abbreviation','abolish','absurd','abundance','academia','accentuate','accessibility','accountability','accredit','accumulation','acquaint','acquisition','activism','adjacent','administer','aesthetic','aggregate','agitation','albeit','alienation','allegation','allegiance','allocate','allude','amass','ambiguity','amend','analogy','ancestor','anecdote','animosity','annex','anomaly','anthropology','antibiotic','apparatus','appease','arbitrary','archive','articulate','artifact','aspiration','assassinate','assembly','assert','assimilate','atrocity','attainable','attentive','audit','authenticate','authoritarian','autonomy','aversion','backlash','ballot','bankruptcy','barren','beacon','belligerent','benevolent','besiege','biodiversity','bipartisan','blatant','blueprint','bolster','bourgeois','bureaucracy','bypass','calibrate','catalyst','censor','certify','charismatic','chronicle','citizenship','civic','clampdown','classify','cliché','coerce','coherent','coincide','collaborative','collateral','collective','colloquial','colonial','combatant','commemorate','communal','compassion','compendium','complacent','complement','compliance','concede','conceptual','condemn','condone','confederate','confide','confiscate','conglomerate','connotation','conscientious','consecutive','consensus','consortium','conspicuous','conspiracy','constituency','constitutional','contemplate','contempt','contend','contention','contextual','contingent','contradiction','contrary','convene','converge','conviction','cordially','correlate','corrosion','cosmopolitan','counterfeit','coup','courteous','credential','credibility','criterion','culminate','cultivate','cumulative','curator','curtail','custody','cynical','de facto','decentralize','decipher','decisive','decree','deduce','defamation','deference','defiance','delegate','deliberation','delineate','demographic','denounce','depict','deploy','depreciate','deprivation','deregulation','designate','deter','detract','detrimental','deviate','devolution','diagnose','dictator','differentiate','diplomacy','disarmament','discern','discourse','disdain','disenfranchise','disillusion','dismantle','disparity','disposition','disproportionate','disseminate','dissent','dissertation','distill','distinctive','distort','divert','doctrine','dormant','drastically','drawback','drought','dual','dubious','dynamics','eccentric','eclipse','egalitarian','elaboration','elicit','elite','eloquent','emancipation','embargo','embed','embody','embryonic','empathy','empirical','empower','enact','encompass','endeavor','endorsement','engrave','enlighten','ensue','entail','entitlement','entrepreneur','enumerate','envisage','epitome','equilibrium','eradicate','erratic','escalate','espionage','esteem','ethnography','etiquette','evident','evoke','exaggerate','exceedingly','excavate','excerpt','exemplify','exhaustive','exile','existential','exorbitant','expedition','expenditure','expire','explanatory','exploitation','exquisite','extensively','extinguish','extravagant','fabrication','facet','famine','fascism','feat','federalism','feminism','ferocious','fertility','feudal','fiasco','fiscal','flagship','flawed','foe','forefront','foremost','forfeit','forge','formidable','foster','fragile','fragment','fraudulent','frivolous','frontier','fundamentalism','furnish','futile','generalize','genesis','genocide','geopolitical','glamorous','globalization','grassroots','gratitude','grievance','guerrilla','habitat','harassment','haven','heighten','henceforth','hereditary','heroism','heterogeneous','hinder','hitherto','homogeneous','humanitarian','hybrid','hypothetical','iconic','illicit','illiterate','immerse','immortal','impartial','implement','impoverish','impulsive','inaugural','incessant','inclination','inclusive','indictment','indignation','indispensable','induce','inequality','infancy','infiltrate','inflict','influential','informant','inhabit','inheritance','injection','inmate','innate','innumerable','inquisitive','insane','inseparable','instigate','insurgent','integral','integrity','intercept','interim','interplay','interrogation','intersection','intricate','intrinsic','intuition','invaluable','invoke','irreversible','itinerary','jeopardize','jurisdiction','justifiable','juxtapose','landmark','latent','legacy','legislative','legitimacy','lenient','leverage','liaison','liberate','linguistic','lobbyist','locomotive','loophole','lucrative','magnitude','malicious','mandate','manifesto','marginalize','materialize','mediate','medieval','memorandum','mercantile','meritocracy','metropolitan','militant','mobilize','monarchy','monopoly','moratorium','morbid','multilateral','municipal','mythology','nationalism','neglect','negotiable','nominally','nonetheless','notion','novice','nuance','nurture','obedience','obscure','obsession','offspring','oligarchy','ominous','onset','operational','oppression','organizational','orthodox','oscillate','ostensibly','oust','outcry','outrage','overarching','overhaul','overlap','overthrow','overturn','pacifist','paradox','parenthetical','parliamentary','partisan','patriarchal','patronage','peculiar','pedagogy','peerage','peninsula','peripheral','permeate','perpetrate','perpetuate','persevere','persist','pervasive','petition','philanthropy','pinnacle','plagiarism','plaintiff','plausible','pluralism','polarize','populist','posterity','pragmatic','precedent','precipitate','preclude','predecessor','predicament','predominantly','preemptive','premise','prerogative','prestigious','presumption','prevail','privatization','proactive','proclamation','procurement','proliferation','prolific','propel','proposition','prosecution','prosperity','protracted','provincial','provisional','provocative','proxy','pseudonym','purport','quota','radicalism','ramification','ratification','rationalize','reaffirm','realignment','rebellion','rebuke','recession','reciprocal','reconciliation','recur','redundant','referendum','regenerate','regime','regression','rehabilitation','reiterate','relinquish','reminiscent','renaissance','reparation','repercussion','replicate','repression','reprimand','republicanism','repudiate','requisite','resentment','resilience','resistance','respectively','restoration','restraint','restructure','retaliation','revelation','revolt','rhetoric','righteous','rigorous','robust','sanctity','sarcastic','saturation','scapegoat','scrutinize','secession','secular','sediment','segregation','seize','sensational','separatism','sequel','shrewd','simultaneously','skepticism','solidarity','sovereignty','speculative','spontaneously','stagnation','statistical','stereotype','stigma','stipend','strategic','subjective','subordinate','subsequent','subsidize','substantiate','subversive','suffrage','superficial','supersede','suppress','supremacy','surge','susceptibility','sustainable','sympathetic','synthesize','tacit','taxonomy','tenacious','territorial','theorem','therapeutic','tolerate','totalitarian','trafficking','transcend','transcribe','transformation','transgression','transparency','traverse','treason','treatise','trivial','turbulent','tyranny','undercut','underestimate','unilateral','universally','unprecedented','upheaval','usurp','utilitarian','utmost','utopian','validate','vanguard','vengeance','ventilate','verdict','viability','vigilante','vindicate','visceral','vociferous','volatile','vouch','waiver','whistleblower','widespread','wither','workforce','zealous']),
 };
 
-const CEFR_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1'];
+const CEFR_ORDER = ['C1', 'B2', 'B1', 'A2', 'A1'];
 
 function getCEFRLevel(word: string): string {
   const lower = word.toLowerCase();
-  for (const level of CEFR_ORDER.reverse()) {
+  for (const level of CEFR_ORDER) {
     if (CEFR[level]?.has(lower)) return level;
   }
   return 'unknown';
@@ -34,15 +40,45 @@ function getCEFRLevel(word: string): string {
 // Filler words
 const FILLERS = new Set(['um', 'uh', 'er', 'ah', 'like', 'you know', 'i mean', 'so', 'well', 'actually', 'basically', 'literally', 'right', 'okay', 'hmm']);
 
+// Common grammar error patterns
+const GRAMMAR_ERRORS = [
+  { pattern: /\bi\s+is\b/gi, type: 'subject-verb' },
+  { pattern: /\bhe\s+have\b/gi, type: 'subject-verb' },
+  { pattern: /\bshe\s+have\b/gi, type: 'subject-verb' },
+  { pattern: /\bthey\s+is\b/gi, type: 'subject-verb' },
+  { pattern: /\bwe\s+is\b/gi, type: 'subject-verb' },
+  { pattern: /\bme\s+and\s+\w+\s+(is|are|was|were)\b/gi, type: 'pronoun' },
+  { pattern: /\bdid\s+(\w+)ed\b/gi, type: 'tense' },
+  { pattern: /\bmuch\s+(people|things|friends|books)\b/gi, type: 'countable' },
+  { pattern: /\bless\s+(people|things|friends|books)\b/gi, type: 'countable' },
+  { pattern: /\bmore\s+better\b/gi, type: 'comparative' },
+  { pattern: /\bmore\s+easier\b/gi, type: 'comparative' },
+  { pattern: /\bthe\s+[bcdfghjklmnpqrstvwxz]+\s+[aeiou]/gi, type: 'article' }, // crude a/an detector
+  { pattern: /\ba\s+[aeiou]\w+/gi, type: 'article-a-an' },
+  { pattern: /\ban\s+[bcdfghjklmnpqrstvwxyz]\w+/gi, type: 'article-a-an' },
+  { pattern: /\bi\s+have\s+go\b/gi, type: 'tense' },
+  { pattern: /\bi\s+am\s+go\b/gi, type: 'verb-form' },
+];
+
+function detectGrammarErrors(transcript: string): number {
+  let count = 0;
+  for (const err of GRAMMAR_ERRORS) {
+    const matches = transcript.match(err.pattern);
+    if (matches) count += matches.length;
+  }
+  return count;
+}
+
 export function analyzeSpeech(
   transcript: string,
   confidenceValues: number[] = [],
   sceneVocab: string[] = [],
 ): AnalysisResult {
-  const words = transcript.toLowerCase().match(/\b[a-z]+\b/g) || [];
+  const words: string[] = transcript.toLowerCase().match(/\b[a-z]+\b/g) || [];
   const wordCount = words.length;
   const uniqueWords = new Set(words);
   const uniqueCount = uniqueWords.size;
+  const ttr = wordCount > 0 ? uniqueCount / wordCount : 0;
 
   // --- Fluency ---
   const avgWPM = wordCount > 0 ? wordCount / 0.75 : 0; // assume 45s avg speech
@@ -54,7 +90,6 @@ export function analyzeSpeech(
   ));
 
   // --- Vocabulary ---
-  const diversity = wordCount > 0 ? uniqueCount / wordCount : 0;
   const cefrLevels: Record<string, number> = {};
   let highLevelCount = 0;
   words.forEach(w => {
@@ -65,7 +100,7 @@ export function analyzeSpeech(
   const sceneVocabUsed = sceneVocab.filter(v => words.includes(v.toLowerCase())).length;
   const vocabScore = Math.min(100, Math.round(
     (Math.min(uniqueCount, 50) / 50 * 30) +
-    (diversity * 30) +
+    (ttr * 30) +
     (Math.min(sceneVocabUsed, 5) / 5 * 20) +
     (Math.min(highLevelCount, 10) / 10 * 20)
   ));
@@ -78,13 +113,18 @@ export function analyzeSpeech(
 
   // --- Grammar ---
   const sentences = transcript.split(/[.!?]+/).filter(s => s.trim().length > 0);
-  const avgSentenceLength = sentences.length > 0 ? wordCount / sentences.length : 0;
+  const sentenceCount = sentences.length;
+  const avgSentenceLength = sentenceCount > 0 ? wordCount / sentenceCount : 0;
   const passiveCount = (transcript.match(/\b(is|are|was|were|been|being)\s+\w+(ed|en|d)\b/gi) || []).length;
-  const grammarScore = Math.min(100, Math.round(
-    (Math.min(avgSentenceLength, 25) / 25 * 40) +
-    (sentences.length >= 2 ? 30 : sentences.length * 15) +
-    (passiveCount > 0 ? Math.min(passiveCount, 3) / 3 * 30 : 15)
-  ));
+  const errorCount = detectGrammarErrors(transcript);
+  // Deduct 5 per error, but cap so it doesn't go to 0
+  const errorPenalty = Math.min(40, errorCount * 5);
+  const grammarScore = Math.max(0, Math.min(100, Math.round(
+    (Math.min(avgSentenceLength, 25) / 25 * 35) +
+    (sentenceCount >= 2 ? 25 : sentenceCount * 12) +
+    (passiveCount > 0 ? Math.min(passiveCount, 3) / 3 * 20 : 10) +
+    (10 - errorPenalty / 4)
+  )));
 
   // --- Overall ---
   const overallScore = Math.round(
@@ -107,7 +147,9 @@ export function analyzeSpeech(
       score: vocabScore,
       totalWords: wordCount,
       uniqueWords: uniqueCount,
+      ttr: Math.round(ttr * 100),
       cefrLevels,
+      sceneVocabUsed,
       detail: vocabScore >= 80 ? 'Rich vocabulary!' : vocabScore >= 50 ? 'Good variety of words.' : 'Try using more diverse vocabulary.',
     },
     pronunciation: {
@@ -118,10 +160,73 @@ export function analyzeSpeech(
     grammar: {
       score: grammarScore,
       avgSentenceLength: Math.round(avgSentenceLength * 10) / 10,
+      sentenceCount,
+      errorCount,
       passiveCount,
-      detail: grammarScore >= 80 ? 'Strong grammar structure!' : grammarScore >= 60 ? 'Good sentence construction.' : 'Try forming more complete sentences.',
+      detail: grammarScore >= 80 ? 'Strong grammar structure!' : grammarScore >= 60 ? 'Good sentence construction.' : errorCount > 5 ? 'Several grammar errors detected. Try reviewing basics.' : 'Try forming more complete sentences.',
     },
     timestamp: Date.now(),
     transcript,
   };
+}
+
+/**
+ * Optional: enrich with Claude API for real AI feedback.
+ * Requires user to have set apiKey in settings.
+ * If fails or no key, returns the basic result.
+ */
+export async function enrichWithClaude(
+  base: AnalysisResult,
+  apiKey: string | null,
+  scene: string,
+): Promise<AnalysisResult> {
+  if (!apiKey) return base;
+  try {
+    const prompt = `You are a friendly English tutor. The user just practiced ${scene} scene. Analyze their transcript and give specific, encouraging feedback in JSON format.
+
+TRANSCRIPT: "${base.transcript}"
+
+LOCAL SCORES:
+- Overall: ${base.overall.score}/100 (${base.overall.level})
+- Fluency: ${base.fluency.score}/100 (${base.fluency.wpm} wpm, ${base.fluency.fillerRatio}% fillers)
+- Vocabulary: ${base.vocabulary.score}/100 (${base.vocabulary.uniqueWords} unique / ${base.vocabulary.totalWords} total)
+- Grammar: ${base.grammar.score}/100 (${base.grammar.sentenceCount} sentences, ${base.grammar.errorCount} errors detected)
+
+Respond ONLY with this exact JSON (no markdown):
+{"overall_comment":"...","strengths":["...","..."],"improvements":["...","..."],"next_practice":"..."}
+
+Be encouraging, specific, and brief. Reply in ${scene === 'business' || scene === 'interview' ? 'English' : 'the same language as the user\'s transcript (likely English with possible Chinese mix)'}.`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 600,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (!res.ok) return base;
+    const data = await res.json();
+    const text = data.content?.[0]?.text || '';
+    // Try to extract JSON from the response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      base.aiFeedback = {
+        overall_comment: parsed.overall_comment || '',
+        strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+        improvements: Array.isArray(parsed.improvements) ? parsed.improvements : [],
+        next_practice: parsed.next_practice || '',
+      };
+    }
+  } catch (e) {
+    // Silently fail — return base result
+  }
+  return base;
 }

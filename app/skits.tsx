@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { ALL_SKITS, Skit } from '../services/game-data';
 import { SCENARIOS } from '../services/scenarios';
 import * as Speech from 'expo-speech';
+import { useI18n } from '../services/i18n';
 
 const { width: W } = Dimensions.get('window');
 const F = { fontFamily: 'Nunito_400Regular' };
@@ -32,6 +33,7 @@ const DIFF_LABEL: Record<string, string> = {
 
 export default function SkitsScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const [active, setActive] = useState<Skit | null>(null);
   const [userRole, setUserRole] = useState<'A' | 'B' | null>(null);
   const [speaking, setSpeaking] = useState(false);
@@ -96,14 +98,14 @@ export default function SkitsScreen() {
     return (
       <View style={s.root}>
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()} activeOpacity={0.85}>
-          <Text style={s.backTxt}>← 返回</Text>
+          <Text style={s.backTxt}>← {t('common.back')}</Text>
         </TouchableOpacity>
 
         <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-          <Text style={[s.title, FX]}>短劇</Text>
-          <Text style={s.subtitle}>Role-play Skits</Text>
+          <Text style={[s.title, FX]}>{t('skits.title')}</Text>
+          <Text style={s.subtitle}>{t('skits.subtitle')}</Text>
 
-          <Text style={s.desc}>揀一個場景，揀一個角色，跟住大聲讀出嚟</Text>
+          <Text style={s.desc}>{t('skits.empty')}</Text>
 
           {ALL_SKITS.map(skit => {
             const scene = SCENARIOS[skit.scene as keyof typeof SCENARIOS];
@@ -144,7 +146,7 @@ export default function SkitsScreen() {
   return (
     <View style={s.root}>
       <TouchableOpacity style={s.backBtn} onPress={() => { stop(); setActive(null); }} activeOpacity={0.85}>
-        <Text style={s.backTxt}>← 返回</Text>
+        <Text style={s.backTxt}>← {t('common.back')}</Text>
       </TouchableOpacity>
 
       <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
@@ -160,7 +162,7 @@ export default function SkitsScreen() {
         </View>
 
         {/* Role selector */}
-        <Text style={s.section}>揀你嘅角色</Text>
+        <Text style={s.section}>{t('skits.pickRole')}</Text>
         <View style={s.roleRow}>
           <TouchableOpacity
             style={[s.roleCard, userRole === 'A' && s.roleCardOnA]}
@@ -169,7 +171,7 @@ export default function SkitsScreen() {
           >
             <Text style={s.roleIcon}>{active.roles.A.icon}</Text>
             <Text style={[s.roleName, FB]}>{active.roles.A.name}</Text>
-            {userRole === 'A' && <Text style={s.roleOn}>已選</Text>}
+            {userRole === 'A' && <Text style={s.roleOn}>{t('skits.chosen')}</Text>}
           </TouchableOpacity>
           <TouchableOpacity
             style={[s.roleCard, userRole === 'B' && s.roleCardOnB]}
@@ -178,7 +180,7 @@ export default function SkitsScreen() {
           >
             <Text style={s.roleIcon}>{active.roles.B.icon}</Text>
             <Text style={[s.roleName, FB]}>{active.roles.B.name}</Text>
-            {userRole === 'B' && <Text style={s.roleOn}>已選</Text>}
+            {userRole === 'B' && <Text style={s.roleOn}>{t('skits.chosen')}</Text>}
           </TouchableOpacity>
         </View>
 
@@ -189,12 +191,12 @@ export default function SkitsScreen() {
             onPress={speaking ? stop : speakFullSkit}
             activeOpacity={0.85}
           >
-            <Text style={s.ctrlBtnTxt}>{speaking ? '⏸ 停止' : '▶️ 全部播一次'}</Text>
+            <Text style={s.ctrlBtnTxt}>{speaking ? t('skits.stop') : t('skits.playAll')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Lines */}
-        <Text style={s.section}>對話 Lines</Text>
+        <Text style={s.section}>{t('skits.lines')}</Text>
         {active.lines.map((line, i) => {
           const isA = line.role === 'A';
           const roleName = isA ? active.roles.A : active.roles.B;
@@ -218,7 +220,7 @@ export default function SkitsScreen() {
               <View style={[s.lineBubble, isUser && s.lineBubbleUser]}>
                 <View style={s.lineNameRow}>
                   <Text style={s.lineName}>{roleName.name}</Text>
-                  {isUser && <View style={s.youTag}><Text style={s.youTagTxt}>你</Text></View>}
+                  {isUser && <View style={s.youTag}><Text style={s.youTagTxt}>{t('skits.you')}</Text></View>}
                   {played && <Text style={s.playedTag}>✓</Text>}
                 </View>
                 <Text style={[s.lineTxt, isUser && s.lineTxtUser]}>{line.text}</Text>
@@ -230,7 +232,7 @@ export default function SkitsScreen() {
         {/* Vocab */}
         {active.vocab && active.vocab.length > 0 && (
           <>
-            <Text style={s.section}>📚 詞彙 Vocab</Text>
+            <Text style={s.section}>{t('skits.vocab')}</Text>
             <View style={s.vocabBox}>
               {active.vocab.map((v, i) => (
                 <View key={i} style={s.vocabRow}>

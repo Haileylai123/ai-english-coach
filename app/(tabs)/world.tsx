@@ -306,7 +306,7 @@ export default function WorldScreen() {
                   <Text style={st.trophyIcon}>{unlocked ? a.icon : '🔒'}</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={[st.trophyText, F, !unlocked && st.trophyLocked]}>{a.name}</Text>
-                    <Text style={[st.trophyDesc, F, !unlocked && st.trophyLocked]}>{a.description}</Text>
+                    <Text style={[st.trophyDesc, F, !unlocked && st.trophyLocked]}>{a.desc}</Text>
                   </View>
                 </View>
               );
@@ -351,10 +351,10 @@ function StatBar({ label, value, color }: { label: string; value: number; color:
   );
 }
 
-function ActionBtn({ label, img, sub, onPress }: { label: string; img?: any; emoji?: string; sub: string; onPress: () => void }) {
+function ActionBtn({ label, img, sub, onPress }: { label: string; img?: any; sub: string; onPress: () => void }) {
   return (
     <TouchableOpacity style={st.actionBtn} onPress={onPress} activeOpacity={0.85}>
-      {img ? <Image source={img} style={st.actionImg} resizeMode="contain" /> : <Text style={st.actionEmoji}>{emoji}</Text>}
+      {img ? <Image source={img} style={st.actionImg} resizeMode="contain" /> : <Text style={st.actionEmoji}>🎯</Text>}
       <Text style={[st.actionLab, FB]}>{label}</Text>
       <Text style={[st.actionSub, F]}>{sub}</Text>
     </TouchableOpacity>

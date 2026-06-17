@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Dimensions, Image, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { WORD_BANK } from '../../services/game-data';
 import { SCENARIOS } from '../../services/scenarios';
 import { useStore } from '../../services/store';
+import { todayStr, isDue } from '../../services/srs';
 import WordPickerModal from '../../components/WordPickerModal';
 
 const VOCAB_ICON = require('../../assets/icons/stat-vocabulary.png');
@@ -50,11 +52,27 @@ Object.values(SCENARIOS).forEach(sc => {
 });
 
 export default function VocabScreen() {
+  const router = useRouter();
   const { state, dispatch } = useStore();
   const [diff, setDiff] = useState<Diff>('all');
   const [query, setQuery] = useState('');
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [showAdd, setShowAdd] = useState(false);
+
+  // Count due today for review button badge
+  const dueCount = useMemo(() => {
+    const today = todayStr();
+    let count = 0;
+    state.customVocab.forEach(w => {
+      const e = state.srs[w.en];
+      if (!e || isDue(e, today)) count++;
+    });
+    Object.keys(state.srs).forEach(word => {
+      if (state.customVocab.some(v => v.en === word)) return;
+      if (isDue(state.srs[word], today)) count++;
+    });
+    return count;
+  }, [state.customVocab, state.srs]);
 
   const toggleFav = (en: string) => {
     setFavorites(prev => {
@@ -220,6 +238,20 @@ export default function VocabScreen() {
         {/* Add button */}
         <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(true)} activeOpacity={0.85}>
           <Text style={s.addBtnTxt}>+ 手動加生字</Text>
+        </TouchableOpacity>
+
+        {/* SRS Review button */}
+        <TouchableOpacity style={s.reviewBtn} onPress={() => router.push('/srs')} activeOpacity={0.85}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.reviewBtnTitle}>🧠 SRS 智能複習</Text>
+            <Text style={s.reviewBtnSub}>{dueCount > 0 ? `${dueCount} 個生字到期` : '冇嘢要複習'}</Text>
+          </View>
+          {dueCount > 0 && (
+            <View style={s.reviewBadge}>
+              <Text style={s.reviewBadgeTxt}>{dueCount}</Text>
+            </View>
+          )}
+          <Text style={s.reviewArrow}>→</Text>
         </TouchableOpacity>
 
         {/* My Words (from chat) */}
@@ -605,6 +637,20 @@ const s = StyleSheet.create({
     elevation: 2,
   },
   addBtnTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
+
+  reviewBtn: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 12,
+    borderWidth: 2, borderColor: PINK_SOFT,
+  },
+  reviewBtnTitle: { fontSize: 14, color: INK, fontWeight: '800' },
+  reviewBtnSub: { fontSize: 12, color: MUTED, fontWeight: '600', marginTop: 2 },
+  reviewBadge: {
+    backgroundColor: PINK, borderRadius: 14, paddingHorizontal: 8, paddingVertical: 3,
+    marginRight: 6,
+  },
+  reviewBadgeTxt: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  reviewArrow: { fontSize: 20, color: PINK, fontWeight: '800' },
   delIcon: { fontSize: 14, color: MUTED, fontWeight: '700' },
   ctxTag: {
     alignSelf: 'flex-start',

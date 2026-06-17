@@ -1,8 +1,10 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useStore } from '../services/store';
 import { useI18n, Locale } from '../services/i18n';
+import { initNotifications, scheduleStreakReminder, cancelAll, isAvailable } from '../services/notifications';
+import * as backend from '../services/backend';
 
 const PINK = '#e8927f';
 const PINK_SOFT = '#fbe4dc';
@@ -25,6 +27,87 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { state, dispatch } = useStore();
   const { t, locale, setLocale } = useI18n();
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [aiUsage, setAiUsage] = useState<{ used: number; limit: number; remaining: number } | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const notifAvailable = isAvailable();
+
+  useEffect(() => {
+    initNotifications().then(granted => {
+      if (granted) setNotifEnabled(true);
+    });
+    if (state.account.loggedIn) {
+      backend.getAiUsage().then(setAiUsage).catch(() => {});
+    }
+  }, [state.account.loggedIn]);
+
+  const handleSync = async () => {
+    if (!state.account.loggedIn) return;
+    setSyncing(true);
+    dispatch({ type: 'SET_SYNCING', payload: true });
+    try {
+      const r = await backend.syncUserState(state);
+      if (r.ok) {
+        dispatch({ type: 'SET_LAST_SYNC', payload: Date.now() });
+        Alert.alert(locale === 'en' ? 'Synced ✓' : locale === 'zh-CN' ? '已同步 ✓' : '已同步 ✓');
+        // Refresh AI usage
+        backend.getAiUsage().then(setAiUsage).catch(() => {});
+      } else {
+        Alert.alert(locale === 'en' ? 'Sync failed' : locale === 'zh-CN' ? '同步失败' : '同步失敗', r.error || '');
+      }
+    } finally {
+      setSyncing(false);
+      dispatch({ type: 'SET_SYNCING', payload: false });
+    }
+  };
+
+  const handleTestPush = async () => {
+    try {
+      const r = await backend.sendTestPush();
+      Alert.alert(
+        locale === 'en' ? 'Sent!' : locale === 'zh-CN' ? '已发送！' : '已送出！',
+        `${r.sent} sent, ${r.errors} errors`
+      );
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    }
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      locale === 'en' ? 'Log out?' : locale === 'zh-CN' ? '退出登录？' : '登出?',
+      locale === 'en' ? 'Your local data stays on this device.' : locale === 'zh-CN' ? '本地数据会保留在此设备。' : '本地資料會保留喺呢部機。',
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: locale === 'en' ? 'Log out' : locale === 'zh-CN' ? '退出' : '登出',
+          style: 'destructive',
+          onPress: async () => {
+            await backend.logout();
+            dispatch({ type: 'SET_ACCOUNT', payload: { loggedIn: false, user: null } });
+          },
+        },
+      ],
+    );
+  };
+
+  const toggleNotif = async (val: boolean) => {
+    if (val) {
+      const granted = await initNotifications();
+      if (granted) {
+        await scheduleStreakReminder(20, 0); // 8 PM
+        setNotifEnabled(true);
+      } else {
+        Alert.alert(
+          locale === 'en' ? 'Permission needed' : '需要權限',
+          locale === 'en' ? 'Please enable notifications in system settings' : '請去系統設定開啟通知',
+        );
+      }
+    } else {
+      await cancelAll();
+      setNotifEnabled(false);
+    }
+  };
 
   const pickLocale = (l: Locale) => {
     setLocale(l);
@@ -117,6 +200,118 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             );
           })}
+        </View>
+
+        {/* Notifications */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>🔔 {locale === 'en' ? 'Notifications' : locale === 'zh-CN' ? '通知' : '通知'}</Text>
+          {!notifAvailable && (
+            <Text style={s.notifHint}>
+              {locale === 'en' ? '⚠️ Run `npx expo install expo-notifications` to enable' : '⚠️ 跑 `npx expo install expo-notifications` 開啟'}
+            </Text>
+          )}
+          {notifAvailable && (
+            <View style={s.notifRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.rowLabel, FB]}>
+                  {locale === 'en' ? 'Daily streak reminder' : locale === 'zh-CN' ? '每日打卡提醒' : '每日打卡提醒'}
+                </Text>
+                <Text style={s.rowSub}>
+                  {locale === 'en' ? 'At 8:00 PM every day' : locale === 'zh-CN' ? '每晚 8 点' : '每晚 8 點'}
+                </Text>
+              </View>
+              <Switch
+                value={notifEnabled}
+                onValueChange={toggleNotif}
+                trackColor={{ false: '#e0d0c0', true: PINK }}
+                thumbColor="#fff"
+              />
+            </View>
+          )}
+        </View>
+
+        {/* Account (Cloudflare backend) */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>☁️ {locale === 'en' ? 'Account' : locale === 'zh-CN' ? '账户' : '帳戶'}</Text>
+          {state.account.loggedIn ? (
+            <>
+              <View style={s.petInfoRow}>
+                <Text style={s.petInfoLab}>{locale === 'en' ? 'Email' : locale === 'zh-CN' ? '邮箱' : '電郵'}</Text>
+                <Text style={s.petInfoVal}>{state.account.email}</Text>
+              </View>
+              <View style={s.petInfoRow}>
+                <Text style={s.petInfoLab}>{locale === 'en' ? 'Plan' : locale === 'zh-CN' ? '方案' : '方案'}</Text>
+                <Text style={s.petInfoVal}>
+                  {state.account.tier === 'premium' ? '👑 Premium' : state.account.tier === 'pro' ? '⭐ Pro' : '🆓 Free'}
+                </Text>
+              </View>
+              {aiUsage && (
+                <View style={s.petInfoRow}>
+                  <Text style={s.petInfoLab}>{locale === 'en' ? 'AI today' : locale === 'zh-CN' ? '今日 AI' : '今日 AI'}</Text>
+                  <Text style={s.petInfoVal}>
+                    {aiUsage.used} / {aiUsage.limit === Infinity ? '∞' : aiUsage.limit}
+                  </Text>
+                </View>
+              )}
+              {state.lastSyncAt && (
+                <View style={s.petInfoRow}>
+                  <Text style={s.petInfoLab}>{locale === 'en' ? 'Last sync' : locale === 'zh-CN' ? '上次同步' : '上次同步'}</Text>
+                  <Text style={s.petInfoVal}>{new Date(state.lastSyncAt).toLocaleTimeString()}</Text>
+                </View>
+              )}
+              <TouchableOpacity
+                style={[s.row, syncing && { opacity: 0.6 }]}
+                onPress={handleSync}
+                disabled={syncing}
+                activeOpacity={0.85}
+              >
+                <Text style={s.rowFlag}>🔄</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.rowLabel, FB]}>
+                    {syncing
+                      ? (locale === 'en' ? 'Syncing...' : locale === 'zh-CN' ? '同步中...' : '同步緊...')
+                      : (locale === 'en' ? 'Sync now' : locale === 'zh-CN' ? '立即同步' : '即刻同步')}
+                  </Text>
+                  <Text style={s.rowSub}>
+                    {locale === 'en' ? 'Push your progress to the cloud' : locale === 'zh-CN' ? '将进度推送到云端' : '將進度推送去雲端'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.row} onPress={handleTestPush} activeOpacity={0.85}>
+                <Text style={s.rowFlag}>🔔</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.rowLabel, FB]}>
+                    {locale === 'en' ? 'Send test push' : locale === 'zh-CN' ? '发送测试推送' : '送測試推播'}
+                  </Text>
+                  <Text style={s.rowSub}>
+                    {locale === 'en' ? 'Verify notifications work' : locale === 'zh-CN' ? '验证通知功能' : '測試推播收到未'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.dangerBtn} onPress={handleLogout} activeOpacity={0.85}>
+                <Text style={s.dangerBtnTxt}>
+                  {locale === 'en' ? '🚪 Log out' : locale === 'zh-CN' ? '🚪 退出登录' : '🚪 登出'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity
+              style={s.row}
+              onPress={() => router.push('/auth')}
+              activeOpacity={0.85}
+            >
+              <Text style={s.rowFlag}>☁️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.rowLabel, FB]}>
+                  {locale === 'en' ? 'Log in / Sign up' : locale === 'zh-CN' ? '登录 / 注册' : '登入 / 註冊'}
+                </Text>
+                <Text style={s.rowSub}>
+                  {locale === 'en' ? 'Sync your progress across devices' : locale === 'zh-CN' ? '跨设备同步你的进度' : '跨設備同步你嘅進度'}
+                </Text>
+              </View>
+              <Text style={s.check}>›</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Pet */}
@@ -237,4 +432,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   dangerBtnTxt: { color: PINK, fontSize: 13, fontWeight: '800' },
+
+  notifRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
+  notifHint: { fontSize: 12, color: SUBINK, lineHeight: 18, fontWeight: '500' },
 });

@@ -74,6 +74,36 @@ export interface AppState {
 
   // Locale (UI language)
   locale: string;
+
+  // Onboarding
+  hasOnboarded: boolean;
+
+  // SRS (Spaced Repetition) for vocab
+  srs: { [word: string]: SRSEntry };
+
+  // Account (Cloudflare backend)
+  account: {
+    loggedIn: boolean;
+    userId: string | null;
+    email: string | null;
+    displayName: string | null;
+    tier: 'free' | 'pro' | 'premium' | null;
+  };
+  lastSyncAt: number | null;
+  syncing: boolean;
+}
+
+export interface SRSEntry {
+  /** ease factor, default 2.5 */
+  ef: number;
+  /** current interval in days */
+  interval: number;
+  /** number of times reviewed */
+  reps: number;
+  /** due date (YYYY-MM-DD) */
+  due: string;
+  /** last reviewed timestamp */
+  lastReview: number | null;
 }
 
 export interface VocabItem {
@@ -110,6 +140,12 @@ type Action =
   | { type: 'COMPLETE_LESSON'; payload: { courseId: string; lessonId: string } }
   | { type: 'SET_CURRENT_LESSON'; payload: { courseId: string; lessonId: string | null } }
   | { type: 'SET_LOCALE'; payload: string }
+  | { type: 'ONBOARDING_COMPLETE' }
+  | { type: 'SRS_UPDATE'; payload: { word: string; quality: number } }
+  | { type: 'SRS_INIT_WORD'; payload: { word: string } }
+  | { type: 'SET_ACCOUNT'; payload: { loggedIn: boolean; user: { id: string; email: string; displayName?: string; tier?: string } | null } }
+  | { type: 'SET_SYNCING'; payload: boolean }
+  | { type: 'SET_LAST_SYNC'; payload: number }
   | { type: 'RESTORE_STATE'; payload: Partial<AppState> };
 
 const initialState: AppState = {
@@ -143,6 +179,11 @@ const initialState: AppState = {
   customVocab: [],
   courseProgress: {},
   locale: 'zh-HK',
+  hasOnboarded: false,
+  srs: {},
+  account: { loggedIn: false, userId: null, email: null, displayName: null, tier: null },
+  lastSyncAt: null,
+  syncing: false,
 };
 
 const STORAGE_KEY = '@english_buddy_state';
@@ -316,8 +357,70 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case 'SET_LOCALE':
       return { ...state, locale: action.payload };
+    case 'ONBOARDING_COMPLETE':
+      return { ...state, hasOnboarded: true };
+    case 'SRS_INIT_WORD': {
+      const today = new Date().toISOString().slice(0, 10);
+      return {
+        ...state,
+        srs: {
+          ...state.srs,
+          [action.payload.word]: { ef: 2.5, interval: 0, reps: 0, due: today, lastReview: null },
+        },
+      };
+    }
+    case 'SRS_UPDATE': {
+      const { word, quality } = action.payload; // 0-5 scale
+      const entry = state.srs[word];
+      if (!entry) return state;
+      const q = Math.max(0, Math.min(5, quality));
+      let { ef, interval, reps } = entry;
+      if (q < 3) {
+        // Failed: reset
+        reps = 0;
+        interval = 1;
+      } else {
+        // SM-2 algorithm
+        if (reps === 0) interval = 1;
+        else if (reps === 1) interval = 6;
+        else interval = Math.round(interval * ef);
+        reps += 1;
+        ef = Math.max(1.3, ef + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02)));
+      }
+      const next = new Date();
+      next.setDate(next.getDate() + interval);
+      const due = next.toISOString().slice(0, 10);
+      return {
+        ...state,
+        srs: {
+          ...state.srs,
+          [word]: { ef, interval, reps, due, lastReview: Date.now() },
+        },
+      };
+    }
     case 'RESTORE_STATE':
       return { ...state, ...action.payload };
+    case 'SET_ACCOUNT':
+      if (!action.payload.loggedIn || !action.payload.user) {
+        return {
+          ...state,
+          account: { loggedIn: false, userId: null, email: null, displayName: null, tier: null },
+        };
+      }
+      return {
+        ...state,
+        account: {
+          loggedIn: true,
+          userId: action.payload.user.id,
+          email: action.payload.user.email,
+          displayName: action.payload.user.displayName || null,
+          tier: (action.payload.user.tier as 'free' | 'pro' | 'premium' | null) || 'free',
+        },
+      };
+    case 'SET_SYNCING':
+      return { ...state, syncing: action.payload };
+    case 'SET_LAST_SYNC':
+      return { ...state, lastSyncAt: action.payload };
     default:
       return state;
   }
