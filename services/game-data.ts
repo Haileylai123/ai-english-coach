@@ -53,6 +53,18 @@ export const WORD_BANK: Record<string, WordPair[]> = {
     { en: 'juxtaposition', zh: '並列' },{ en: 'unprecedented', zh: '史無前例的' },{ en: 'exacerbate', zh: '加劇' },
     { en: 'ubiquitous', zh: '無處不在的' },{ en: 'quintessential', zh: '典型的' },{ en: 'ameliorate', zh: '改善' },
     { en: 'ephemeral', zh: '短暫的' },{ en: 'pragmatic', zh: '務實的' },{ en: 'conundrum', zh: '難題' },{ en: 'dichotomy', zh: '二分法' },
+    { en: 'eloquent', zh: '雄辯的' },{ en: 'meticulous', zh: '一絲不苟' },{ en: 'resilient', zh: '有韌性' },{ en: 'verbose', zh: '冗長' },
+    { en: 'concise', zh: '簡潔' },{ en: 'adamant', zh: '堅決' },{ en: 'ambivalent', zh: '矛盾' },{ en: 'candid', zh: '坦率' },
+    { en: 'diligent', zh: '勤奮' },{ en: 'eloquent', zh: '有說服力' },{ en: 'frugal', zh: '節儉' },{ en: 'gregarious', zh: '愛社交' },
+    { en: 'haughty', zh: '傲慢' },{ en: 'impartial', zh: '公正' },{ en: 'jubilant', zh: '歡欣' },{ en: 'keen', zh: '熱衷' },
+    { en: 'lenient', zh: '寬容' },{ en: 'nonchalant', zh: '冷漠' },{ en: 'obstinate', zh: '固執' },{ en: 'placid', zh: '平靜' },
+    { en: 'quaint', zh: '古雅' },{ en: 'robust', zh: '強健' },{ en: 'succinct', zh: '精簡' },{ en: 'tenacious', zh: '堅持' },
+    { en: 'versatile', zh: '多才多藝' },{ en: 'witty', zh: '機智' },{ en: 'zealous', zh: '熱心' },
+    // Business extras
+    { en: 'benchmark', zh: '基準' },{ en: 'scalable', zh: '可擴展' },{ en: 'leverage', zh: '利用' },{ en: 'streamline', zh: '簡化' },
+    { en: 'onboard', zh: '入職' },{ en: 'iterate', zh: '迭代' },{ en: 'deliverable', zh: '交付物' },{ en: 'ROI', zh: '投資回報' },
+    { en: 'stakeholder', zh: '持份者' },{ en: 'synergy', zh: '協同效應' },{ en: 'bandwidth', zh: '人力/時間' },{ en: 'deep dive', zh: '深入探討' },
+    { en: 'action item', zh: '待辦事項' },{ en: 'touch base', zh: '聯繫' },{ en: 'circle back', zh: '回覆' },{ en: 'move the needle', zh: '顯著進展' },
   ],
 };
 
@@ -81,6 +93,21 @@ export const FILL_SENTENCES: FillSentence[] = [
   { en: 'I object ___ being treated like a child.', blank: 'to', opts: ['to', 'for', 'at', 'against'], zh: '我反對被當小孩對待。' },
   { en: 'She devoted her life ___ helping others.', blank: 'to', opts: ['to', 'for', 'in', 'on'], zh: '她把一生奉獻給幫助他人。' },
   { en: 'No sooner had we left ___ it started raining.', blank: 'than', opts: ['than', 'when', 'then', 'that'], zh: '我們剛走就下雨了。' },
+  { en: 'The company has been ___ since 2015.', blank: 'operating', opts: ['operate', 'operates', 'operating', 'operation'], zh: '公司從2015年開始營運。' },
+  { en: 'Despite ___ tired, she finished the report.', blank: 'being', opts: ['be', 'was', 'being', 'is'], zh: '雖然好攰，佢都完成咗報告。' },
+  { en: 'You ___ have told me earlier!', blank: 'should', opts: ['must', 'should', 'can', 'will'], zh: '你應該早啲講！' },
+  { en: 'The cake was ___ by my grandmother.', blank: 'made', opts: ['make', 'makes', 'made', 'making'], zh: '蛋糕係我阿婆整嘅。' },
+  { en: 'I wish I ___ speak Japanese.', blank: 'could', opts: ['can', 'could', 'will', 'would'], zh: '我希望我識講日文。' },
+  { en: 'Not only ___ she sing, but she also dances.', blank: 'does', opts: ['do', 'does', 'is', 'has'], zh: '佢唔只識唱歌，仲識跳舞。' },
+  { en: 'The more you read, the ___ you know.', blank: 'more', opts: ['most', 'more', 'many', 'much'], zh: '讀得愈多，知得愈多。' },
+  { en: 'Hardly ___ I arrived when it started.', blank: 'had', opts: ['have', 'had', 'did', 'was'], zh: '我一到就開始咗。' },
+  { en: 'He talks as if he ___ the boss.', blank: 'were', opts: ['is', 'was', 'were', 'be'], zh: '佢講到好似自己係老細咁。' },
+  { en: '___ is no point arguing about it.', blank: 'There', opts: ['It', 'There', 'That', 'This'], zh: '嘈嚟都冇意思。' },
+  { en: 'She asked me ___ I had finished.', blank: 'if', opts: ['that', 'what', 'if', 'which'], zh: '佢問我做完未。' },
+  { en: 'I\'d rather you ___ here tomorrow.', blank: 'came', opts: ['come', 'came', 'coming', 'comes'], zh: '我想你聽日嚟。' },
+  { en: 'It\'s high time we ___ action.', blank: 'took', opts: ['take', 'takes', 'took', 'taken'], zh: '係時候行動啦。' },
+  { en: 'Were I you, I ___ apologize.', blank: 'would', opts: ['will', 'would', 'can', 'must'], zh: '如果係我，我會道歉。' },
+  { en: 'She devoted her life ___ helping stray cats.', blank: 'to', opts: ['to', 'for', 'in', 'on'], zh: '佢一生奉獻俾幫流浪貓。' },
 ];
 
 // ---- Skits ----
@@ -501,6 +528,165 @@ export const ALL_SKITS: Skit[] = [
       { role: 'B', text: "I spent three months talking to users before writing a single line of code." },
     ],
     vocab: [{ en: 'failure', zh: '失敗' }, { en: 'cope', zh: '應對' }, { en: 'venture', zh: '事業' }],
+  },
+
+  // ===== 韓國 Korea =====
+  {
+    id: 'korean-bbq', icon: '🥩', title: '韓式燒肉', scene: 'restaurant', difficulty: 'beginner',
+    roles: { A: { name: 'Server', icon: '🍖' }, B: { name: 'You', icon: '🧑' } },
+    lines: [
+      { role: 'A', text: 'Welcome! How many people today?' },
+      { role: 'B', text: 'Three, please. Can we sit by the window?' },
+      { role: 'A', text: 'Of course! Are you ready to order?' },
+      { role: 'B', text: "Yes — we'll have the pork belly set and some kimchi jjigae." },
+      { role: 'A', text: 'Would you like some soju with that?' },
+      { role: 'B', text: "Just one bottle to share, please." },
+      { role: 'A', text: 'Coming right up! Let me know if you need more banchan.' },
+      { role: 'B', text: 'Thank you! The meat here is always amazing.' },
+    ],
+    vocab: [{ en: 'pork belly', zh: '三層肉' }, { en: 'banchan', zh: '小菜' }, { en: 'jjigae', zh: '鍋' }],
+  },
+  {
+    id: 'korean-cafe', icon: '☕', title: '首爾咖啡店', scene: 'daily', difficulty: 'beginner',
+    roles: { A: { name: 'Barista', icon: '☕' }, B: { name: 'You', icon: '🧑' } },
+    lines: [
+      { role: 'A', text: 'Hi! What can I get for you today?' },
+      { role: 'B', text: "I'll have an iced Americano and a slice of tiramisu, please." },
+      { role: 'A', text: 'Sure! For here or to go?' },
+      { role: 'B', text: "For here, please. I'm going to study for a while." },
+      { role: 'A', text: "No problem! The Wi-Fi password is on the receipt." },
+      { role: 'B', text: 'Perfect, thank you so much!' },
+    ],
+    vocab: [{ en: 'americano', zh: '美式咖啡' }, { en: 'tiramisu', zh: '提拉米蘇' }, { en: 'receipt', zh: '收據' }],
+  },
+
+  // ===== 日本 Japan =====
+  {
+    id: 'conbini', icon: '🏪', title: '便利店', scene: 'daily', difficulty: 'beginner',
+    roles: { A: { name: 'Clerk', icon: '🏪' }, B: { name: 'You', icon: '🧑' } },
+    lines: [
+      { role: 'A', text: 'Hello! Would you like a bag?' },
+      { role: 'B', text: "Yes, please. Just a small one." },
+      { role: 'A', text: 'The total is ¥1,280. Cash or card?' },
+      { role: 'B', text: "I'll pay with my Suica, please." },
+      { role: 'A', text: 'Sure! Just tap here. Do you need the receipt?' },
+      { role: 'B', text: "No, that's fine. Thank you!" },
+      { role: 'A', text: 'Thank you! Have a nice day.' },
+    ],
+    vocab: [{ en: 'convenience store', zh: '便利店' }, { en: 'receipt', zh: '收據' }, { en: 'total', zh: '總數' }],
+  },
+  {
+    id: 'shinkansen', icon: '🚄', title: '新幹線', scene: 'daily', difficulty: 'beginner',
+    roles: { A: { name: 'Staff', icon: '🚄' }, B: { name: 'You', icon: '🧑' } },
+    lines: [
+      { role: 'A', text: 'Next train to Kyoto departs at 2:15 from platform 14.' },
+      { role: 'B', text: "Thank you. Is this a Nozomi train?" },
+      { role: 'A', text: 'Yes. Do you have a JR Pass?' },
+      { role: 'B', text: "I do! Can I reserve a seat?" },
+      { role: 'A', text: 'Of course. Window or aisle?' },
+      { role: 'B', text: "Window, please. I'd love to see Mount Fuji!" },
+      { role: 'A', text: 'Good choice! Seat 12A. Enjoy the ride.' },
+    ],
+    vocab: [{ en: 'depart', zh: '出發' }, { en: 'platform', zh: '月台' }, { en: 'reserve', zh: '預約' }],
+  },
+  {
+    id: 'onsen', icon: '♨️', title: '溫泉旅館', scene: 'daily', difficulty: 'intermediate',
+    roles: { A: { name: 'Staff', icon: '♨️' }, B: { name: 'You', icon: '🧑' } },
+    lines: [
+      { role: 'A', text: 'Welcome! We have your reservation for one night.' },
+      { role: 'B', text: "Yes, under the name Suzuki. What time are the baths open?" },
+      { role: 'A', text: 'The onsen is open from 6am to midnight. Yukata are in your room.' },
+      { role: 'B', text: "Lovely! Do you have any tattoos policy?" },
+      { role: 'A', text: 'Small tattoos are fine if covered. We have covers available.' },
+      { role: 'B', text: "Great, thank you. We'll freshen up before dinner." },
+    ],
+    vocab: [{ en: 'onsen', zh: '溫泉' }, { en: 'yukata', zh: '浴衣' }, { en: 'tattoo', zh: '紋身' }],
+  },
+
+  // ===== 更多日常 More Daily =====
+  {
+    id: 'gym', icon: '🏋️', title: '健身室', scene: 'daily', difficulty: 'beginner',
+    roles: { A: { name: 'Trainer', icon: '🏋️' }, B: { name: 'You', icon: '🧑' } },
+    lines: [
+      { role: 'A', text: "Hi! First time here? Let me show you around." },
+      { role: 'B', text: "Yes, I just signed up. Where are the changing rooms?" },
+      { role: 'A', text: 'Just down the hall on the left. Lockers are free to use.' },
+      { role: 'B', text: "Great. And can you show me how this machine works?" },
+      { role: 'A', text: "Of course! Let's start with some light weight first." },
+      { role: 'B', text: "Thanks. I'm trying to get back into shape." },
+      { role: 'A', text: "You've got this! Start slow and stay consistent." },
+    ],
+    vocab: [{ en: 'locker', zh: '儲物櫃' }, { en: 'machine', zh: '機器' }, { en: 'consistent', zh: '堅持' }],
+  },
+  {
+    id: 'pet-store', icon: '🐾', title: '寵物店', scene: 'daily', difficulty: 'beginner',
+    roles: { A: { name: 'Staff', icon: '🐾' }, B: { name: 'You', icon: '🧑' } },
+    lines: [
+      { role: 'A', text: "Hi! Looking for anything specific for your pet today?" },
+      { role: 'B', text: "I need food for my cat — she's been eating the same thing for months." },
+      { role: 'A', text: 'We have grain-free options that are great for sensitive stomachs.' },
+      { role: 'B', text: "Oh perfect. She's been throwing up a lot lately." },
+      { role: 'A', text: "Try this one. It's limited ingredient and very gentle." },
+      { role: 'B', text: "I'll give it a shot. She's super picky though!" },
+    ],
+    vocab: [{ en: 'grain-free', zh: '無穀物' }, { en: 'sensitive', zh: '敏感' }, { en: 'picky', zh: '揀食' }],
+  },
+  {
+    id: 'airbnb', icon: '🏠', title: 'Airbnb Check-in', scene: 'daily', difficulty: 'intermediate',
+    roles: { A: { name: 'Host', icon: '🏠' }, B: { name: 'You', icon: '🧑' } },
+    lines: [
+      { role: 'A', text: "Hi! I'm your host. Did you have a good flight?" },
+      { role: 'B', text: "Yes, smooth flight! The place looks even better than the photos." },
+      { role: 'A', text: "Thank you! Here's your key. Wi-Fi password is on the fridge." },
+      { role: 'B', text: "And what about the air conditioning? It's quite warm." },
+      { role: 'A', text: 'Remote is on the wall. Please set it to whatever is comfortable.' },
+      { role: 'B', text: "Perfect. Also — any restaurant recommendations nearby?" },
+      { role: 'A', text: "There's a great Thai place two blocks down. I'll text you the link." },
+    ],
+    vocab: [{ en: 'host', zh: '房東' }, { en: 'recommendation', zh: '推薦' }, { en: 'comfortable', zh: '舒服' }],
+  },
+  {
+    id: 'library', icon: '📚', title: '圖書館', scene: 'daily', difficulty: 'beginner',
+    roles: { A: { name: 'Librarian', icon: '📚' }, B: { name: 'You', icon: '🧑' } },
+    lines: [
+      { role: 'A', text: 'Can I help you find something?' },
+      { role: 'B', text: "I'm looking for books on English grammar — intermediate level." },
+      { role: 'A', text: 'Aisle 7, language section. Do you have a library card?' },
+      { role: 'B', text: "Not yet. Can I apply for one today?" },
+      { role: 'A', text: "Sure! Just fill out this form. You'll need your ID." },
+      { role: 'B', text: "Got it. Can I borrow up to 5 books at a time?" },
+      { role: 'A', text: 'Actually, you can borrow up to 20! Happy reading.' },
+    ],
+    vocab: [{ en: 'librarian', zh: '圖書館員' }, { en: 'borrow', zh: '借' }, { en: 'aisle', zh: '走廊/架' }],
+  },
+
+  // ===== 更多商務 More Business =====
+  {
+    id: 'performance-review', icon: '📈', title: '年度表現評估', scene: 'business', difficulty: 'advanced',
+    roles: { A: { name: 'Manager', icon: '👩‍💼' }, B: { name: 'You', icon: '🧑‍💻' } },
+    lines: [
+      { role: 'A', text: "Thanks for coming in. Let's talk about your performance this year." },
+      { role: 'B', text: "Of course. I've prepared a summary of my key projects." },
+      { role: 'A', text: "Great. Let's start with what went well." },
+      { role: 'B', text: "I led the redesign project, which shipped on time and increased conversions by 15%." },
+      { role: 'A', text: "Impressive. And what area do you think needs improvement?" },
+      { role: 'B', text: "Honestly, I could do better at cross-team communication." },
+      { role: 'A', text: "I agree. Let's put together a development plan for that." },
+    ],
+    vocab: [{ en: 'performance', zh: '表現' }, { en: 'conversion', zh: '轉換率' }, { en: 'development plan', zh: '發展計劃' }],
+  },
+  {
+    id: 'networking', icon: '🤝', title: '社交酒會', scene: 'business', difficulty: 'intermediate',
+    roles: { A: { name: 'Stranger', icon: '🧑‍💼' }, B: { name: 'You', icon: '🧑' } },
+    lines: [
+      { role: 'A', text: "Hi! I'm David from the marketing team. Is this your first time at this event?" },
+      { role: 'B', text: "It is! I'm new to the company — joined the design team last month." },
+      { role: 'A', text: "Welcome aboard! How are you finding it so far?" },
+      { role: 'B', text: "It's been great. Everyone is super friendly and collaborative." },
+      { role: 'A', text: "We should grab coffee sometime. I'd love to hear your design perspective." },
+      { role: 'B', text: "I'd like that! Let me give you my card." },
+    ],
+    vocab: [{ en: 'networking', zh: '社交' }, { en: 'collaborative', zh: '合作' }, { en: 'perspective', zh: '觀點' }],
   },
 ];
 

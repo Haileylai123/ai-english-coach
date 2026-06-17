@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image, Alert } from 'react-native';
-import { COURSES, Course, Lesson } from '../../services/courses';
+import { ALL_COURSES, COURSES, Course, Lesson } from '../../services/courses';
+import { useRouter } from 'expo-router';
 import { useStore } from '../../services/store';
 
 const LEARN_ICON = require('../../assets/icons/stat-medal.png');
@@ -42,6 +43,7 @@ const TYPE_LABEL: Record<string, string> = {
 type LearnView = 'list' | 'course' | 'lesson' | 'quiz' | 'quizResult';
 
 export default function LearnScreen() {
+  const router = useRouter();
   const { state, dispatch } = useStore();
   const [view, setView] = useState<LearnView>('list');
   const [activeCourse, setActiveCourse] = useState<Course | null>(null);
@@ -50,8 +52,8 @@ export default function LearnScreen() {
   const [quizSubmitted, setQuizSubmitted] = useState(false);
 
   // Stats
-  const totalCourses = COURSES.length;
-  const totalLessons = COURSES.reduce((sum, c) => sum + c.lessons.length, 0);
+  const totalCourses = ALL_COURSES.length;
+  const totalLessons = ALL_COURSES.reduce((sum, c) => sum + c.lessons.length, 0);
   const completedLessons = Object.values(state.courseProgress).reduce((s, p) => s + p.completed.length, 0);
 
   const goToCourse = (c: Course) => {
@@ -121,6 +123,20 @@ export default function LearnScreen() {
               <Text style={[s.title, FX]}>Learn</Text>
             </View>
 
+            {/* Quick access — Vocab & Games */}
+            <View style={s.quickRow}>
+              <TouchableOpacity style={s.quickCard} onPress={() => router.push('/vocab')} activeOpacity={0.85}>
+                <Text style={s.quickEmoji}>📖</Text>
+                <Text style={[s.quickLabel, FB]}>Vocab</Text>
+                <Text style={s.quickSub}>單詞庫 · SRS 複習</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.quickCard} onPress={() => router.push('/games')} activeOpacity={0.85}>
+                <Text style={s.quickEmoji}>🎮</Text>
+                <Text style={[s.quickLabel, FB]}>Games</Text>
+                <Text style={s.quickSub}>5 種遊戲 · 短劇</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={s.summaryCard}>
               <View style={s.summaryItem}>
                 <Text style={[s.summaryNum, FX]}>{totalCourses}</Text>
@@ -139,7 +155,7 @@ export default function LearnScreen() {
             </View>
 
             <Text style={s.section}>所有課程</Text>
-            {COURSES.map(c => {
+            {ALL_COURSES.map(c => {
               const prog = state.courseProgress[c.id] || { completed: [], current: null };
               const pct = Math.round((prog.completed.length / c.lessons.length) * 100);
               return (
@@ -419,13 +435,21 @@ const CARD_GAP = 12;
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: CREAM },
   content: { paddingTop: 60, paddingHorizontal: SIDE_PAD, paddingBottom: 20 },
+  quickRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  quickCard: { flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 14, alignItems: 'center', borderWidth: 1.5, borderColor: '#f5e8de' },
+  quickEmoji: { fontSize: 28, marginBottom: 6 },
+  quickLabel: { fontSize: 14, color: INK },
+  quickSub: { fontSize: 10, color: MUTED, marginTop: 2, fontWeight: '600' },
   backBtn: {
     position: 'absolute',
-    top: 18, left: 16,
+    top: 60, left: 16,
     zIndex: 10,
-    padding: 8,
+    padding: 12,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 3,
   },
-  backTxt: { fontSize: 15, color: PINK, fontWeight: '700' },
+  backTxt: { fontSize: 16, color: PINK, fontWeight: '700' },
 
   titleRow: {
     flexDirection: 'row',

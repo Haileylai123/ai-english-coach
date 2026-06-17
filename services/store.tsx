@@ -23,6 +23,12 @@ export interface AppState {
   interviewCount: number;
   datingCount: number;
   doctorCount: number;
+  tedCount: number;
+  keigoCount: number;
+  izakayaCount: number;
+  toeicCount: number;
+  jobHuntJpCount: number;
+  jobHuntKrCount: number;
 
   // Progress
   analysisHistory: AnalysisResult[];
@@ -55,7 +61,17 @@ export interface AppState {
   petName: string;
   petOutfit: string | null;
   petBackground: string | null;
-  petFurniture: string[];
+  petFurniture: string[]; // legacy (still in use by older code)
+  /** Each item placed in a specific slot. `null` = slot empty. Item placement auto-determines slot by furniture type. */
+  petRoom: {
+    bed: string | null;          // big furniture (bed, cat-tree) — bottom-center
+    floor: string | null;        // rugs/mats — bottom full-width
+    table: string | null;        // mid-height surface (bookshelf, plant) — floats
+    topLeft: string | null;      // upper-left corner
+    topRight: string | null;     // upper-right corner
+    bottomLeft: string | null;   // bottom-left corner
+    bottomRight: string | null;  // bottom-right corner
+  };
   petCoins: number;
   petHunger: number;
   petIntimacy: number;
@@ -130,6 +146,9 @@ type Action =
   | { type: 'EQUIP_OUTFIT'; payload: string | null }
   | { type: 'EQUIP_BG'; payload: string | null }
   | { type: 'ADD_FURNITURE'; payload: string }
+  | { type: 'REMOVE_FURNITURE'; payload: string }
+  | { type: 'PLACE_ROOM_ITEM'; payload: { slot: 'bed' | 'floor' | 'table' | 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight'; itemId: string } }
+  | { type: 'CLEAR_ROOM_SLOT'; payload: 'bed' | 'floor' | 'table' | 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' }
   | { type: 'ADD_PET_COINS'; payload: number }
   | { type: 'FEED_PET' }
   | { type: 'PLAY_PET' }
@@ -156,6 +175,7 @@ const initialState: AppState = {
   totalWords: 0,
   businessCount: 0, ieltsCount: 0, dailyCount: 0,
   restaurantCount: 0, interviewCount: 0, datingCount: 0, doctorCount: 0,
+  tedCount: 0, keigoCount: 0, izakayaCount: 0, toeicCount: 0, jobHuntJpCount: 0, jobHuntKrCount: 0,
   analysisHistory: [],
   bestScores: { overall: 0, fluency: 0, vocabulary: 0, pronunciation: 0, grammar: 0 },
   maxUniqueWords: 0, bestFluency: 0, bestPronunciation: 0,
@@ -167,9 +187,10 @@ const initialState: AppState = {
   activePet: 'cat',
   petName: 'Mimi',
   petOutfit: null,
-  petBackground: 'garden',
+  petBackground: null,
   petFurniture: [],
-  petCoins: 100,
+  petRoom: { bed: null, floor: null, table: null, topLeft: null, topRight: null, bottomLeft: null, bottomRight: null },
+  petCoins: 100000,
   petHunger: 80,
   petIntimacy: 50,
   ownedPets: ['cat'],
@@ -246,6 +267,12 @@ function reducer(state: AppState, action: Action): AppState {
         interviewCount: state.interviewCount,
         datingCount: state.datingCount,
         doctorCount: state.doctorCount,
+        tedCount: state.tedCount,
+        keigoCount: state.keigoCount,
+        izakayaCount: state.izakayaCount,
+        toeicCount: state.toeicCount,
+        jobHuntJpCount: state.jobHuntJpCount,
+        jobHuntKrCount: state.jobHuntKrCount,
         maxUniqueWords: newState.maxUniqueWords,
         bestFluency: newState.bestFluency,
         bestPronunciation: newState.bestPronunciation,
@@ -276,6 +303,12 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, petBackground: action.payload };
     case 'ADD_FURNITURE':
       return { ...state, petFurniture: [...state.petFurniture, action.payload] };
+    case 'REMOVE_FURNITURE':
+      return { ...state, petFurniture: state.petFurniture.filter(f => f !== action.payload) };
+    case 'PLACE_ROOM_ITEM':
+      return { ...state, petRoom: { ...state.petRoom, [action.payload.slot]: action.payload.itemId } };
+    case 'CLEAR_ROOM_SLOT':
+      return { ...state, petRoom: { ...state.petRoom, [action.payload]: null } };
     case 'ADD_PET_COINS':
       return { ...state, petCoins: Math.max(0, state.petCoins + action.payload) };
     case 'FEED_PET': {

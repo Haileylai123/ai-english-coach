@@ -631,10 +631,70 @@ export const COURSES: Course[] = [
       },
     ],
   },
+
+  // TED 演講訓練
+  {
+    id: 'ted-speaking', icon: '🎤',
+    title: 'TED 演講訓練', titleEn: 'TED Talk Speaking',
+    desc: 'TED 風格演講 — 說服力、敘事技巧、台風',
+    level: 'advanced', category: 'basics',
+    lessons: [
+      { id: 'ted-1', title: '搵到你嘅 Idea', titleZh: '找想法', type: 'speaking', minutes: 8,
+        content: '每個 TED 演講都由一個核心 idea 出發。\\n\\n練習：「如果全世界只可以記住我一句說話，我想佢記住...」\\n\\n例子：\\n• "Failure is not the opposite of success — it\'s part of it."\\n• "The most important skill is learning how to learn."',
+        vocab: [{ en: 'idea', zh: '想法', example: 'What\'s the one idea you want to share?' }, { en: 'perspective', zh: '觀點', example: 'This changed my perspective.' }, { en: 'message', zh: '訊息', example: 'What\'s your core message?' }],
+        practice: { prompt: 'What is ONE idea you would share on a TED stage?', zh: 'TED 舞台你會分享咩 idea？' },
+        quiz: [{ q: '好嘅 TED idea 特點？', qZh: '', opts: ['好長', '一個清晰可記住嘅核心訊息', '好多數據', '純搞笑'], ans: 1 }],
+      },
+      { id: 'ted-2', title: '開場 30 秒', titleZh: '開場', type: 'speaking', minutes: 8,
+        content: '頭 30 秒決定觀眾會唔會聽落去。\\n\\n好嘅開場：\\n① 問題："What if I told you..."\\n② 故仔："Three years ago, I was..."\\n③ 震撼事實\\n④ 想像："Close your eyes and imagine..."',
+        vocab: [{ en: 'imagine', zh: '想像', example: 'Imagine a world where...' }, { en: 'what if', zh: '如果', example: 'What if I told you...?' }, { en: 'hook', zh: '吸引注意', example: 'Start with a strong hook.' }],
+        practice: { prompt: 'Write a 30-second TED opening.', zh: '寫一個 30 秒 TED 開場。' },
+        quiz: [{ q: '最有效嘅開場？', qZh: '', opts: ['介紹自己先', '一個問題或故仔', '背景資料', '多謝名單'], ans: 1 }],
+      },
+      { id: 'ted-3', title: '用故仔講道理', titleZh: '敘事', type: 'speaking', minutes: 10,
+        content: '人唔會記住數據，但會記住故仔。\\n\\n好故仔元素：主角→衝突→轉折→教訓\\n\\n例子："Last year, I was stuck. Then something unexpected happened. That\'s when I realized..."',
+        vocab: [{ en: 'struggle', zh: '掙扎', example: 'I struggled with this.' }, { en: 'turning point', zh: '轉折點', example: 'That was the turning point.' }, { en: 'lesson', zh: '教訓', example: 'Here\'s the lesson.' }],
+        practice: { prompt: 'Tell a 1-minute story from your life that teaches a lesson.', zh: '用 1 分鐘講一個有教訓嘅故仔。' },
+        quiz: [{ q: '好嘅故仔最緊要有咩？', qZh: '', opts: ['好多角色', '衝突+轉折+教訓', '好長', '純搞笑'], ans: 1 }],
+      },
+      { id: 'ted-4', title: '身體語言同聲線', titleZh: '台風', type: 'speaking', minutes: 7,
+        content: '非語言部分同樣重要。\\n\\n身體：企中間、手勢自然、眼神交流\\n聲線：慢過正常 20%、重要句子後停頓 2-3 秒\\n\\n練習：錄低自己，睇返。',
+        vocab: [{ en: 'posture', zh: '姿勢', example: 'Good posture.' }, { en: 'eye contact', zh: '眼神接觸', example: 'Make eye contact.' }, { en: 'pause', zh: '停頓', example: 'Pause after key points.' }],
+        practice: { prompt: 'Record yourself 1-minute. Watch it back.', zh: '錄低自己 1 分鐘演講，睇返。' },
+        quiz: [{ q: '演講速度應該？', qZh: '', opts: ['好快', '比正常慢 20%', '同平時一樣', '好慢'], ans: 1 }],
+      },
+      { id: 'ted-5', title: '完整 TED 演講', titleZh: '完整演講', type: 'speaking', minutes: 15,
+        content: 'Combine 所有技巧做 3 分鐘完整演講。\\n\\n結構：Hook→Idea→故仔→教訓→Call to Action\\n\\nTips：排練最少 5 次、唔好照稿讀、最後一句要有力。',
+        vocab: [{ en: 'call to action', zh: '行動呼籲', example: 'Here\'s my call to action.' }, { en: 'rehearse', zh: '排練', example: 'Rehearse 5+ times.' }, { en: 'impact', zh: '影響', example: 'Leave an impact.' }],
+        practice: { prompt: 'Deliver a 3-minute TED talk: "Something I believe that most people disagree with."', zh: '3 分鐘 TED：「一樣我相信但多數人唔同意嘅嘢」' },
+        quiz: [{ q: '3 分鐘演講結構？', qZh: '', opts: ['Hook→Idea→故事→教訓→CTA', '自我介紹→主題→結論', '多謝→內容→再見', '只有笑話'], ans: 0 }],
+      },
+    ],
+  },
 ];
 
+// ---- Market-specific courses ----
+import { JA_COURSES } from './courses-ja';
+import { KO_COURSES } from './courses-ko';
+import { EXTRA_COURSES } from './courses-extra';
+import { EXTRA_LESSONS } from './courses-fill';
+
+/** All courses merged, with thin courses filled to 5+ lessons */
+function buildAllCourses(): Course[] {
+  const base = [...COURSES, ...EXTRA_COURSES, ...JA_COURSES, ...KO_COURSES];
+  return base.map(course => {
+    const extra = EXTRA_LESSONS[course.id];
+    if (extra && extra.length > 0) {
+      return { ...course, lessons: [...course.lessons, ...extra] };
+    }
+    return course;
+  });
+}
+
+export const ALL_COURSES: Course[] = buildAllCourses();
+
 export function getCourse(id: string): Course | undefined {
-  return COURSES.find(c => c.id === id);
+  return ALL_COURSES.find(c => c.id === id);
 }
 
 export function getLesson(courseId: string, lessonId: string): Lesson | undefined {

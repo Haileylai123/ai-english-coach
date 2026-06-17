@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useStore } from '../../services/store';
 import { ACHIEVEMENTS } from '../../services/emotions';
+import OverflowMenu from '../../components/OverflowMenu';
 
 const STAT_MEDAL = require('../../assets/icons/stat-medal.png');
 const STAT_FLUENCY = require('../../assets/icons/stat-fluency.png');
@@ -34,6 +35,7 @@ const MUTED = '#b8a89a';
 export default function StatsScreen() {
   const { state } = useStore();
   const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const bests = [
     { label: 'overall', value: state.bestScores.overall, src: STAT_MEDAL },
@@ -62,8 +64,13 @@ export default function StatsScreen() {
         {/* Title row */}
         <View style={s.titleRow}>
           <Text style={[s.title, FX]}>My Progress</Text>
-          <View style={s.titleStar}>
-            <Image source={COIN_SRC} style={{ width: 32, height: 32 }} resizeMode="contain" />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={s.titleStar}>
+              <Image source={COIN_SRC} style={{ width: 32, height: 32 }} resizeMode="contain" />
+            </View>
+            <TouchableOpacity style={s.menuBtn} onPress={() => setMenuOpen(true)} activeOpacity={0.7}>
+              <Text style={s.menuBtnTxt}>⋯</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -87,6 +94,18 @@ export default function StatsScreen() {
             <View style={[s.xpFill, { width: `${xpProgress}%` }]} />
           </View>
         </View>
+
+        {/* Call Analyzer CTA */}
+        <TouchableOpacity style={s.callCta} onPress={() => router.push('/call-analyzer')} activeOpacity={0.85}>
+          <View style={s.lbCtaLeft}>
+            <Text style={s.lbCtaEmoji}>🎙️</Text>
+            <View>
+              <Text style={[s.lbCtaTitle, { color: INK }]}>Call Analyzer</Text>
+              <Text style={s.lbCtaSub}>錄低 meeting · AI 幫你分析英文</Text>
+            </View>
+          </View>
+          <Text style={[s.lbCtaArrow, { color: PINK }]}>→</Text>
+        </TouchableOpacity>
 
         {/* Leaderboard CTA */}
         <TouchableOpacity style={s.lbCta} onPress={() => router.push('/leaderboard')} activeOpacity={0.85}>
@@ -177,6 +196,8 @@ export default function StatsScreen() {
 
         <View style={{ height: 80 }} />
       </ScrollView>
+
+      <OverflowMenu visible={menuOpen} onClose={() => setMenuOpen(false)} />
     </View>
   );
 }
@@ -221,6 +242,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  menuBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  menuBtnTxt: { fontSize: 22, color: INK, fontWeight: '800', lineHeight: 24 },
 
   // XP / Level
   xpCard: {
@@ -263,6 +286,12 @@ const s = StyleSheet.create({
   bestRow: { flexDirection: 'row', gap: CARD_GAP, marginBottom: 24 },
 
   // Leaderboard CTA
+  callCta: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 12,
+    borderWidth: 1.5, borderColor: PINK,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+  },
   lbCta: {
     flexDirection: 'row',
     alignItems: 'center',

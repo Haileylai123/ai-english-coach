@@ -14,7 +14,7 @@ const FX = { fontFamily: 'Nunito_800ExtraBold' };
 // Pink / coral palette
 const PINK = '#e8927f';
 const PINK_SOFT = '#fbe4dc';
-const CREAM = '#fdf2ec';
+const CREAM = '#ffffff';
 const INK = '#3d3028';
 const SUBINK = '#7a6a5e';
 const MUTED = '#b8a89a';
@@ -255,9 +255,9 @@ const s = StyleSheet.create({
   content: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 20 },
   backBtn: {
     position: 'absolute',
-    top: 18, left: 16,
+    top: 60, left: 16,
     zIndex: 10,
-    padding: 8,
+    padding: 12,
   },
   backTxt: { fontSize: 15, color: PINK, fontWeight: '700' },
 

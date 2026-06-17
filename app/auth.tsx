@@ -8,7 +8,7 @@ import { useI18n } from '../services/i18n';
 
 const PINK = '#e8927f';
 const PINK_SOFT = '#fbe4dc';
-const CREAM = '#fdf2ec';
+const CREAM = '#ffffff';
 const INK = '#3d3028';
 const SUBINK = '#7a6a5e';
 const MUTED = '#b8a89a';
@@ -166,7 +166,7 @@ export default function AuthScreen() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: CREAM },
   content: { paddingTop: 60, paddingHorizontal: 24, paddingBottom: 24, flexGrow: 1 },
-  backBtn: { position: 'absolute', top: 18, left: 16, zIndex: 10, padding: 8 },
+  backBtn: { position: 'absolute', top: 60, left: 16, zIndex: 10, padding: 8 },
   backTxt: { fontSize: 15, color: PINK, fontWeight: '700' },
 
   header: { alignItems: 'center', marginTop: 24, marginBottom: 32 },

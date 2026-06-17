@@ -5,10 +5,12 @@ import { useStore } from '../services/store';
 import { useI18n, Locale } from '../services/i18n';
 import { initNotifications, scheduleStreakReminder, cancelAll, isAvailable } from '../services/notifications';
 import * as backend from '../services/backend';
+import { TTS_VOICES, type TtsVoiceKey } from '../services/backend';
+import { getPreferredVoice, setPreferredVoice, speak as ttsSpeak } from '../services/tts';
 
 const PINK = '#e8927f';
 const PINK_SOFT = '#fbe4dc';
-const CREAM = '#fdf2ec';
+const CREAM = '#ffffff';
 const INK = '#3d3028';
 const SUBINK = '#7a6a5e';
 const MUTED = '#b8a89a';
@@ -21,6 +23,8 @@ const LOCALES: { key: Locale; label: string; flag: string }[] = [
   { key: 'zh-HK', label: '繁體中文（廣東話）', flag: '🇭🇰' },
   { key: 'en', label: 'English', flag: '🇺🇸' },
   { key: 'zh-CN', label: '简体中文', flag: '🇨🇳' },
+  { key: 'ja', label: '日本語', flag: '🇯🇵' },
+  { key: 'ko', label: '한국어', flag: '🇰🇷' },
 ];
 
 export default function SettingsScreen() {
@@ -29,17 +33,43 @@ export default function SettingsScreen() {
   const { t, locale, setLocale } = useI18n();
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [aiUsage, setAiUsage] = useState<{ used: number; limit: number; remaining: number } | null>(null);
+  const [subInfo, setSubInfo] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
+  const [ttsVoice, setTtsVoice] = useState<TtsVoiceKey>('en_warm_woman');
+  const [ttsTesting, setTtsTesting] = useState(false);
   const notifAvailable = isAvailable();
 
   useEffect(() => {
     initNotifications().then(granted => {
       if (granted) setNotifEnabled(true);
     });
+    getPreferredVoice().then(setTtsVoice);
     if (state.account.loggedIn) {
       backend.getAiUsage().then(setAiUsage).catch(() => {});
+      backend.getSubscription().then(setSubInfo).catch(() => {});
     }
   }, [state.account.loggedIn]);
+
+  const handleTestTts = async () => {
+    setTtsTesting(true);
+    try {
+      const sample = locale === 'en'
+        ? 'Hello! Welcome to English Coach. I am your AI speaking partner.'
+        : locale === 'zh-CN'
+          ? '你好！欢迎来到英语教练。我是你的AI口语伙伴。'
+          : '你好！歡迎嚟到 English Coach。我係你嘅 AI 會話伙伴。';
+      await ttsSpeak(sample, ttsVoice, { speed: 1.0 });
+    } catch (e: any) {
+      Alert.alert('TTS Error', e?.message || 'Failed to play voice');
+    } finally {
+      setTtsTesting(false);
+    }
+  };
+
+  const handleSelectVoice = async (key: TtsVoiceKey) => {
+    setTtsVoice(key);
+    await setPreferredVoice(key);
+  };
 
   const handleSync = async () => {
     if (!state.account.loggedIn) return;
@@ -138,6 +168,7 @@ export default function SettingsScreen() {
               totalSpeeches: 0,
               totalWords: 0,
               businessCount: 0, ieltsCount: 0, dailyCount: 0,
+              tedCount: 0, keigoCount: 0, izakayaCount: 0, toeicCount: 0, jobHuntJpCount: 0, jobHuntKrCount: 0,
               restaurantCount: 0, interviewCount: 0, datingCount: 0, doctorCount: 0,
               analysisHistory: [],
               bestScores: { overall: 0, fluency: 0, vocabulary: 0, pronunciation: 0, grammar: 0 },
@@ -230,6 +261,40 @@ export default function SettingsScreen() {
           )}
         </View>
 
+        {/* TTS Voice (Minimax) */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>🔊 {locale === 'en' ? 'AI Voice' : locale === 'zh-CN' ? 'AI 语音' : 'AI 語音'}</Text>
+          <Text style={{ fontSize: 12, color: SUBINK, marginBottom: 12 }}>
+            {locale === 'en' ? 'Choose a voice for AI responses' : locale === 'zh-CN' ? '选择 AI 回复使用的语音' : '選擇 AI 回覆使用嘅聲音'}
+          </Text>
+          {TTS_VOICES.map(v => (
+            <TouchableOpacity
+              key={v.key}
+              style={[s.row, ttsVoice === v.key && s.rowOn]}
+              onPress={() => handleSelectVoice(v.key)}
+              disabled={ttsTesting}
+            >
+              <Text style={s.rowFlag}>{v.language === 'en' ? '🇺🇸' : '🇭🇰'}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.rowLabel, ttsVoice === v.key && s.rowLabelOn]}>
+                  {v.label}
+                </Text>
+              </View>
+              {ttsVoice === v.key && <Text style={s.check}>✓</Text>}
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            style={[s.upgradeBtn, ttsTesting && { opacity: 0.5 }]}
+            onPress={handleTestTts}
+            disabled={ttsTesting}
+          >
+            <Text style={s.upgradeBtnTxt}>
+              {ttsTesting ? '...' : (locale === 'en' ? '▶ Test voice' : locale === 'zh-CN' ? '▶ 测试语音' : '▶ 試聽聲音')}
+            </Text>
+            <Text style={s.upgradeBtnSub}>Minimax</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Account (Cloudflare backend) */}
         <View style={s.section}>
           <Text style={s.sectionTitle}>☁️ {locale === 'en' ? 'Account' : locale === 'zh-CN' ? '账户' : '帳戶'}</Text>
@@ -243,8 +308,27 @@ export default function SettingsScreen() {
                 <Text style={s.petInfoLab}>{locale === 'en' ? 'Plan' : locale === 'zh-CN' ? '方案' : '方案'}</Text>
                 <Text style={s.petInfoVal}>
                   {state.account.tier === 'premium' ? '👑 Premium' : state.account.tier === 'pro' ? '⭐ Pro' : '🆓 Free'}
+                  {state.account.tier === 'free' && subInfo?.pricing?.pro && (
+                    <Text style={{ color: MUTED, fontSize: 11 }}>
+                      {' · '}{locale === 'ja' ? 'Pro' : locale === 'ko' ? '프로' : locale === 'zh-CN' ? '专业版' : 'Pro'}: {subInfo.pricing.pro.symbol}{subInfo.pricing.pro.monthly}/{locale === 'ja' ? '月' : locale === 'ko' ? '월' : 'mo'}
+                    </Text>
+                  )}
                 </Text>
               </View>
+              {state.account.tier === 'free' && (
+                <TouchableOpacity
+                  style={s.upgradeBtn}
+                  onPress={() => router.push('/paywall')}
+                  activeOpacity={0.85}
+                >
+                  <Text style={s.upgradeBtnTxt}>🚀 {locale === 'en' ? 'Upgrade to Pro' : locale === 'zh-CN' ? '升级 Pro' : '升級 Pro'}</Text>
+                  {subInfo?.pricing?.pro && (
+                    <Text style={s.upgradeBtnSub}>
+                      {subInfo.pricing.pro.symbol}{subInfo.pricing.pro.monthly}/{locale === 'ja' ? '月' : locale === 'ko' ? '월' : locale === 'en' ? 'mo' : '月'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
               {aiUsage && (
                 <View style={s.petInfoRow}>
                   <Text style={s.petInfoLab}>{locale === 'en' ? 'AI today' : locale === 'zh-CN' ? '今日 AI' : '今日 AI'}</Text>
@@ -372,7 +456,7 @@ export default function SettingsScreen() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: CREAM },
   content: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 20 },
-  backBtn: { position: 'absolute', top: 18, left: 16, zIndex: 10, padding: 8 },
+  backBtn: { position: 'absolute', top: 60, left: 16, zIndex: 10, padding: 8 },
   backTxt: { fontSize: 15, color: PINK, fontWeight: '700' },
 
   title: { fontSize: 30, color: PINK, textAlign: 'center', letterSpacing: 0.3 },
@@ -418,6 +502,10 @@ const s = StyleSheet.create({
   petInfoLab: { fontSize: 13, color: SUBINK, fontWeight: '500' },
   petInfoVal: { fontSize: 13, color: INK, fontWeight: '800' },
 
+  upgradeBtn: { backgroundColor: PINK, paddingVertical: 14, paddingHorizontal: 18, borderRadius: 14, marginTop: 10, marginBottom: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', shadowColor: PINK, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 3 },
+  upgradeBtnTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  upgradeBtnSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '700' },
+
   aboutCard: { alignItems: 'center', paddingVertical: 8 },
   aboutTitle: { fontSize: 18, color: INK, fontWeight: '800', marginBottom: 4 },
   aboutVersion: { fontSize: 11, color: MUTED, marginBottom: 12, fontWeight: '600' },
@@ -435,4 +523,12 @@ const s = StyleSheet.create({
 
   notifRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
   notifHint: { fontSize: 12, color: SUBINK, lineHeight: 18, fontWeight: '500' },
+
+  // TTS voice selector (aliases of row/rowOn styles for clarity)
+  langRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, borderRadius: 12, marginBottom: 6, backgroundColor: CREAM },
+  langFlag: { fontSize: 24, marginRight: 12 },
+  langLabel: { fontSize: 14, color: INK, fontWeight: '500' },
+  langLabelOn: { color: PINK, fontWeight: '800' },
+  btn: { backgroundColor: PINK, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
+  btnText: { color: '#fff', fontSize: 14, fontWeight: '800' },
 });

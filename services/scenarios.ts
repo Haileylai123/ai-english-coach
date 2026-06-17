@@ -11,13 +11,14 @@ export interface Scenario {
   name: string;
   nameEn: string;
   icon: string;
+  market?: string;  // JP, KR — target market
   prompts: Record<'beginner' | 'intermediate' | 'advanced', ScenarioPrompt[]>;
   keyVocab: string[];
   usefulPhrases: { zh: string; en: string }[];
   pronFocus: string[];
 }
 
-export type SceneId = 'business' | 'ielts' | 'daily' | 'restaurant' | 'interview' | 'dating' | 'doctor' | 'ted';
+export type SceneId = 'business' | 'ielts' | 'daily' | 'restaurant' | 'interview' | 'dating' | 'doctor' | 'ted' | 'keigo' | 'izakaya' | 'toeic' | 'job-hunt-kr';
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 
 export const SCENARIOS: Record<SceneId, Scenario> = {
@@ -282,6 +283,134 @@ export const SCENARIOS: Record<SceneId, Scenario> = {
       { zh: '這改變了我對...的看法。', en: 'This changed my perspective on...' },
     ],
     pronFocus: ['clear pauses between ideas', 'emphasis on key words', 'engaging tone for audience'],
+  },
+
+  // 🇯🇵 Japan market: 敬語 / 丁寧語 (keigo — polite/honorific business Japanese)
+  keigo: {
+    id: 'keigo', name: '敬語・丁寧語', nameEn: 'Polite Japanese', icon: '🎌',
+    market: 'JP',
+    prompts: {
+      beginner: [
+        { zh: '請用禮貌語氣介紹自己。', en: 'Please introduce yourself in a polite manner. I am an office worker. Could I have your business card, please?' },
+        { zh: '在餐廳點餐時用敬語。', en: 'Excuse me, may I have the menu, please? I will have the set meal.' },
+        { zh: '道歉並請對方再說一次。', en: 'I am very sorry to trouble you, but could you please say that again more slowly?' },
+        { zh: '用電話禮貌詢問。', en: 'Hello, this is Tanaka from ABC Company. Is Mr. Yamada available, please?' },
+        { zh: '回應上司的指示。', en: 'Understood. I will have it ready by 5 PM. Thank you for letting me know.' },
+      ],
+      intermediate: [
+        { zh: '開會時表達不同意見。', en: 'I appreciate your perspective. If I may, I would like to suggest a slightly different approach.' },
+        { zh: '向客戶推遲會議。', en: 'I sincerely apologize for the inconvenience, but may we reschedule our meeting to next Tuesday?' },
+        { zh: '感謝同事的幫助。', en: 'Thank you very much for your support. I truly appreciate your hard work on this project.' },
+        { zh: '向上司彙報專案進度。', en: 'I would like to report on the current status of the project, with your permission.' },
+        { zh: '婉拒對方的請求。', en: 'I am very sorry, but unfortunately that will be quite difficult given our current schedule.' },
+      ],
+      advanced: [
+        { zh: '在商務談判中表達異議。', en: 'While I understand your position, I would respectfully propose we consider the long-term implications.' },
+        { zh: '向高層彙報失誤。', en: 'I take full responsibility for the oversight. I would like to propose the following corrective measures.' },
+        { zh: '正式致歉信的口頭表達。', en: 'Please accept our sincerest apologies for any inconvenience this may have caused. We are committed to preventing any recurrence.' },
+        { zh: '客戶場合表達不滿但保持禮貌。', en: 'I understand your frustration, and I assure you we are taking this matter very seriously. May I propose a solution?' },
+        { zh: '談判中作出讓步的表達。', en: 'In the spirit of cooperation, we are prepared to offer the following concessions, should you find them acceptable.' },
+      ],
+    },
+    keyVocab: ['apologize','sincerely','grateful','appreciate','respectfully','propose','inconvenience','commitment','consideration','proposal','arrangement','follow up','promptly','courtesy','feedback','guidance','cooperation','understanding','assurance','proposal','request','permission','assistance','regards'],
+    usefulPhrases: [],
+    pronFocus: ['rising intonation for politeness', 'soft tone for humility', 'pauses before honorific phrases'],
+  },
+
+  // 🇯🇵 Japan: 居酒屋英会話 (izakaya casual English)
+  izakaya: {
+    id: 'izakaya', name: '居酒屋英会話', nameEn: 'Izakaya English', icon: '🍶',
+    market: 'JP',
+    prompts: {
+      beginner: [
+        { zh: '在居酒屋點酒。', en: 'I will have a draft beer, please. And edamame to start.' },
+        { zh: '點人氣菜。', en: 'What are your most popular dishes? I would like to try the yakitori.' },
+        { zh: '問朋友要唔要再來一杯。', en: 'Would you like another drink? Let us get a round of highballs.' },
+        { zh: '叫朋友乾杯。', en: 'Cheers! Kanpai! Here is to a great evening.' },
+        { zh: '買單。', en: 'Check, please. Can we split the bill? Or I will treat everyone tonight.' },
+      ],
+      intermediate: [
+        { zh: '形容食物味道。', en: 'This grilled fish is amazing, so tender and flavorful. Where do you get it?' },
+        { zh: '傾偈計劃下次聚會。', en: 'We should do this more often. Maybe we could try that new place in Shibuya next Friday?' },
+        { zh: '向朋友介紹同事。',        en: 'By the way, this is my colleague Ken. Ken, this is Yuki from my university days.' },
+        { zh: '討論唔同酒嘅分別。', en: 'I prefer sake over beer. It is smoother and pairs better with sashimi.' },
+        { zh: '深夜續攤邀請。', en: 'Are you heading to the next place? There is a great jazz bar just around the corner.' },
+      ],
+      advanced: [
+        { zh: '傾偈關於工作壓力。', en: 'Work has been incredibly demanding lately. I really needed this night out to unwind.' },
+        { zh: '討論人生規劃。', en: 'I have been thinking about taking a sabbatical next year. Maybe travel around Southeast Asia.' },
+        { zh: '傾偈關於某個文化差異。', en: 'It is interesting how work-life balance differs so much between Japan and the West.' },
+        { zh: '表達對朋友嘅感謝。', en: 'I am really grateful to have friends like you. You know I can always count on you.' },
+        { zh: '夜晚結尾感性發言。', en: 'You know, moments like these are what make life truly worth living. Here is to many more.' },
+      ],
+    },
+    keyVocab: ['cheers','draught','sake','highball','edamame','yakitori','sashimi','grilled','flavorful','tender','split the bill','treat','next round','soju','appetizer','skewer','bitter','refreshing','midnight snack','wrap up'],
+    usefulPhrases: [],
+    pronFocus: ['casual tone', 'fast-paced speech', 'casual contractions like "gonna"'],
+  },
+
+  // 🇰🇷 Korea: TOEIC Speaking (한국 TOEIC 스피킹)
+  toeic: {
+    id: 'toeic', name: 'TOEIC Speaking', nameEn: 'TOEIC Speaking', icon: '📊',
+    market: 'KR',
+    prompts: {
+      beginner: [
+        { zh: '自我介紹 (Read aloud)。', en: 'Hello, my name is Minjun Kim. I am a software engineer at a startup in Seoul.' },
+        { zh: '描述一張相。', en: 'In this picture, I can see a busy office. People are working at their desks and typing on laptops.' },
+        { zh: '簡單回答問題。', en: 'I usually take the subway to work. It takes about thirty minutes and is very convenient.' },
+        { zh: '提供資料。', en: 'The conference will be held on March 15th at the Lotte Hotel. Registration starts at 9 AM.' },
+        { zh: '表達意見。', en: 'In my opinion, working from home can be productive, but I prefer the office for collaboration.' },
+      ],
+      intermediate: [
+        { zh: '描述一個經驗。', en: 'Last year, I led a project to redesign our company website. It was challenging but rewarding.' },
+        { zh: '提出解決方案。', en: 'To improve customer satisfaction, I suggest implementing a 24-hour chat support service.' },
+        { zh: '回應投訴。', en: 'I sincerely apologize for the inconvenience. I will escalate this issue and follow up by tomorrow.' },
+        { zh: '簡報開場白。', en: 'Thank you for joining today. I would like to present our Q3 sales performance and key insights.' },
+        { zh: '討論優缺點。', en: 'While remote work offers flexibility, it can also lead to feelings of isolation among team members.' },
+      ],
+      advanced: [
+        { zh: '會議主持。', en: 'Good morning, everyone. Today we will discuss the budget allocation for Q4. Let us start with the marketing proposal.' },
+        { zh: '表達不同意但有建設性。', en: 'I appreciate the proposal, however I have some concerns about the projected ROI. May I share an alternative approach?' },
+        { zh: '總結會議。', en: 'To summarize, we have agreed on three action items. John will lead the customer survey, and I will draft the report by Friday.' },
+        { zh: '推銷產品。', en: 'Our new software reduces invoice processing time by 60 percent. Let me demonstrate how it integrates with your existing system.' },
+        { zh: '商務演講。', en: 'In conclusion, embracing digital transformation is no longer optional but essential for long-term competitiveness in our industry.' },
+      ],
+    },
+    keyVocab: ['productivity','collaboration','stakeholder','deliverable','proposal','timeline','milestone','revenue','quarterly','forecast','implementation','optimization','strategic','leverage','streamline','allocate','prioritize','benchmark','iterate','scale','onboard','stakeholder','roadmap','KPI','ROI','retention','acquisition','synergy','actionable','granular'],
+    usefulPhrases: [],
+    pronFocus: ['clear enunciation', 'professional tone', 'stress on content words', 'proper pausing between ideas'],
+  },
+
+  // 🇰🇷 Korea: Korean job-hunt (취준 면접)
+  'job-hunt-kr': {
+    id: 'job-hunt-kr', name: '취준 면접', nameEn: 'Korean Job Interview', icon: '💼',
+    market: 'KR',
+    prompts: {
+      beginner: [
+        { zh: '自我介紹 1 分鐘。', en: 'Hello, my name is Jiwon. I graduated from Korea University with a degree in business. I am excited to apply for this position.' },
+        { zh: '解釋點解想加入。', en: 'I have always admired your company for its innovative products. I believe this role aligns perfectly with my career goals.' },
+        { zh: '講自己嘅優點。', en: 'I am a very organized person. In my previous internship, I managed schedules for three managers simultaneously.' },
+        { zh: '講一個失敗經歷。', en: 'In my first presentation, I was very nervous. Since then, I have joined a public speaking club to improve.' },
+        { zh: '問公司問題。', en: 'Could you tell me more about the team I would be working with? And what does a typical day look like for this role?' },
+      ],
+      intermediate: [
+        { zh: 'STAR 答法。', en: 'In my last job, when our team missed a deadline, I proposed a new project tracking system. Within two months, on-time delivery improved by 40 percent.' },
+        { zh: '5 年後規劃。', en: 'In five years, I see myself growing into a leadership role where I can mentor new team members and contribute to strategic decisions.' },
+        { zh: '同其他人合作。', en: 'I thrive in team environments. I believe diverse perspectives lead to better solutions and stronger outcomes.' },
+        { zh: '壓力管理。', en: 'When under pressure, I prioritize tasks, break them into smaller steps, and communicate clearly with my team about progress.' },
+        { zh: '解釋點解離開舊公司。', en: 'I have learned a great deal at my current company, but I am seeking new challenges that align with my long-term career vision.' },
+      ],
+      advanced: [
+        { zh: '管理衝突。', en: 'I addressed the conflict by facilitating a one-on-one conversation. We identified the root cause and established shared expectations going forward.' },
+        { zh: '講述帶領團隊嘅成就。', en: 'I led a cross-functional team of seven to launch a new product line that generated two million dollars in revenue within the first year.' },
+        { zh: '解釋創新思維。', en: 'When our customer churn spiked, I proposed a loyalty program that reduced churn by 25 percent and increased lifetime value significantly.' },
+        { zh: '文化適應力。', en: 'Having worked with international teams across three time zones, I have developed strong cross-cultural communication skills and adaptability.' },
+        { zh: '最終反問。', en: 'Thank you for the conversation. Could you share what the biggest challenges are for this team in the next six months?' },
+      ],
+    },
+    keyVocab: ['proactive','initiative','mentorship','cross-functional','stakeholder','deliverable','milestone','action item','priority','onboarding','collaborate','iterate','leverage','optimize','strategic','vision','roadmap','ownership','accountability','resilience','adaptability','feedback loop','time management','conflict resolution','team player','self-starter','results-driven','detail-oriented','empathy'],
+    usefulPhrases: [],
+    pronFocus: ['confident pace', 'stress on achievements', 'clear STAR structure', 'natural conversational flow'],
   },
 };
 

@@ -40,13 +40,16 @@ const DIFFS = [
 ];
 
 const TABS = [
-  { name: 'Chat', desc: 'AI 對話', emoji: '💬' },
-  { name: 'World', desc: '養寵物', emoji: '🐱' },
-  { name: 'Learn', desc: '課程', emoji: '📚' },
-  { name: 'Vocab', desc: '生字庫', emoji: '📖' },
-  { name: 'Games', desc: '遊戲', emoji: '🎮' },
-  { name: 'Stats', desc: '進度', emoji: '📊' },
+  { name: 'Chat',       desc: 'AI 對話', emoji: '💬', route: '/(tabs)/chat' },
+  { name: 'World',      desc: '養寵物', emoji: '🐱', route: '/(tabs)/world' },
+  { name: 'Learn',      desc: '課程',   emoji: '📚', route: '/learn' },
+  { name: 'Vocab',      desc: '生字庫', emoji: '📖', route: '/vocab' },
+  { name: 'Games',      desc: '遊戲',   emoji: '🎮', route: '/games' },
+  { name: 'Stats',      desc: '進度',   emoji: '📊', route: '/(tabs)/stats' },
 ];
+
+// 2 rows × 3 cols layout for oval preview boxes
+const TAB_ROWS = [TABS.slice(0, 3), TABS.slice(3, 6)];
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -55,6 +58,7 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [petId, setPetId] = useState('cat');
   const [difficulty, setDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
+  const [pickedLocale, setPickedLocale] = useState(locale);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   const next = () => {
@@ -63,10 +67,14 @@ export default function OnboardingScreen() {
       setStep(newStep);
       Animated.spring(slideAnim, { toValue: -newStep * W, useNativeDriver: true, friction: 9 }).start();
     } else {
-      // Finish
+      // Finish — apply chosen locale
+      if (pickedLocale !== locale) setLocale(pickedLocale);
+      dispatch({ type: 'SELECT_PET', payload: petId });
+      dispatch({ type: 'SET_PET_NAME', payload: PETS.find(p => p.id === petId)?.name || 'Mimi' });
       dispatch({ type: 'ONBOARDING_COMPLETE' });
       dispatch({ type: 'SET_DIFFICULTY', payload: difficulty });
-      router.replace('/(tabs)/chat');
+      // Aha moment first — show user's first success, then enter app
+      router.replace('/aha');
     }
   };
   const back = () => {
@@ -95,7 +103,7 @@ export default function OnboardingScreen() {
             <View key={i} style={[s.dot, i === step && s.dotOn]} />
           ))}
         </View>
-        <TouchableOpacity onPress={() => { dispatch({ type: 'ONBOARDING_COMPLETE' }); router.replace('/(tabs)/chat'); }} style={s.skipBtn} activeOpacity={0.85}>
+        <TouchableOpacity onPress={() => { dispatch({ type: 'SELECT_PET', payload: petId }); dispatch({ type: 'ONBOARDING_COMPLETE' }); router.replace('/(tabs)/chat'); }} style={s.skipBtn} activeOpacity={0.85}>
           <Text style={s.skipTxt}>Skip</Text>
         </TouchableOpacity>
       </View>
@@ -119,11 +127,13 @@ export default function OnboardingScreen() {
         <View style={[s.slide, { width: W }]}>
           <Text style={s.stepEyebrow}>STEP 1</Text>
           <Text style={[s.title, FX]}>揀你嘅語言</Text>
-          <Text style={s.subtitle}>Choose your language</Text>
+          <Text style={s.subtitle}>Choose your language · 言語選択 · 언어 선택</Text>
           <View style={s.langBox}>
-            <LangBtn id="zh-HK" label="繁體中文" sub="廣東話" active={locale === 'zh-HK'} onPress={() => setLocale('zh-HK')} />
-            <LangBtn id="en" label="English" sub="英文" active={locale === 'en'} onPress={() => setLocale('en')} />
-            <LangBtn id="zh-CN" label="简体中文" sub="簡體" active={locale === 'zh-CN'} onPress={() => setLocale('zh-CN')} />
+            <LangBtn id="zh-HK" label="繁體中文" sub="廣東話 🇭🇰" active={pickedLocale === 'zh-HK'} onPress={() => setPickedLocale('zh-HK')} />
+            <LangBtn id="en" label="English" sub="English 🇺🇸" active={pickedLocale === 'en'} onPress={() => setPickedLocale('en')} />
+            <LangBtn id="zh-CN" label="简体中文" sub="簡體 🇨🇳" active={pickedLocale === 'zh-CN'} onPress={() => setPickedLocale('zh-CN')} />
+            <LangBtn id="ja" label="日本語" sub="Japanese 🇯🇵" active={pickedLocale === 'ja'} onPress={() => setPickedLocale('ja')} />
+            <LangBtn id="ko" label="한국어" sub="Korean 🇰🇷" active={pickedLocale === 'ko'} onPress={() => setPickedLocale('ko')} />
           </View>
         </View>
 
@@ -175,10 +185,26 @@ export default function OnboardingScreen() {
           </View>
           <Text style={s.previewLab}>之後你會用到：</Text>
           <View style={s.tabsPreview}>
-            {TABS.map(t => (
-              <View key={t.name} style={s.tabChip}>
-                <Text style={s.tabEmoji}>{t.emoji}</Text>
-                <Text style={s.tabName}>{t.desc}</Text>
+            {TAB_ROWS.map((row, ri) => (
+              <View key={ri} style={s.tabRow}>
+                {row.map(t => (
+                  <TouchableOpacity
+                    key={t.name}
+                    style={s.tabOval}
+                    onPress={() => {
+                      if (pickedLocale !== locale) setLocale(pickedLocale);
+                      dispatch({ type: 'SELECT_PET', payload: petId });
+                      dispatch({ type: 'ONBOARDING_COMPLETE' });
+                      dispatch({ type: 'SET_DIFFICULTY', payload: difficulty });
+                      router.replace(t.route as any);
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={s.tabEmoji}>{t.emoji}</Text>
+                    <Text style={s.tabOvalName}>{t.name}</Text>
+                    <Text style={s.tabOvalDesc}>{t.desc}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             ))}
           </View>
@@ -218,8 +244,8 @@ const s = StyleSheet.create({
   skipBtn: { paddingHorizontal: 12, paddingVertical: 8 },
   skipTxt: { fontSize: 14, color: MUTED, fontWeight: '700' },
 
-  slidesRow: { flex: 1, flexDirection: 'row' },
-  slide: { flex: 1, paddingHorizontal: 28, paddingTop: 12, alignItems: 'center' },
+  slidesRow: { flex: 1, flexDirection: 'row', width: W * 4 },
+  slide: { width: W, paddingHorizontal: 28, paddingTop: 12, alignItems: 'center' },
 
   stepEyebrow: { fontSize: 12, color: PINK, fontWeight: '800', letterSpacing: 1.5, marginBottom: 8 },
   title: { fontSize: 32, color: INK, textAlign: 'center', marginBottom: 4, fontWeight: '800' },
@@ -235,32 +261,32 @@ const s = StyleSheet.create({
   welcomeEmoji: { fontSize: 70 },
 
   // Lang
-  langBox: { width: '100%', gap: 10, marginTop: 8 },
+  langBox: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8, justifyContent: 'center' },
   langCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: '#fff', borderRadius: 16, padding: 16,
+    width: '46%', flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#fff', borderRadius: 16, padding: 12,
     borderWidth: 2, borderColor: 'transparent',
   },
   langCardOn: { borderColor: PINK, backgroundColor: PINK_SOFT },
   langRadio: {
-    width: 26, height: 26, borderRadius: 13,
+    width: 22, height: 22, borderRadius: 11,
     borderWidth: 2, borderColor: '#e0d0c0',
     alignItems: 'center', justifyContent: 'center',
   },
   langRadioOn: { backgroundColor: PINK, borderColor: PINK },
-  langCheck: { color: '#fff', fontSize: 14, fontWeight: '800' },
-  langName: { fontSize: 16, color: INK },
-  langSub: { fontSize: 12, color: MUTED, fontWeight: '600', marginTop: 1 },
+  langCheck: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  langName: { fontSize: 14, color: INK },
+  langSub: { fontSize: 11, color: MUTED, fontWeight: '600', marginTop: 1 },
 
   // Pets
-  petsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 18, justifyContent: 'center' },
+  petsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 18, justifyContent: 'center' },
   petCard: {
-    width: 95, backgroundColor: '#fff', borderRadius: 18, padding: 10,
+    width: '46%', backgroundColor: '#fff', borderRadius: 18, padding: 14,
     alignItems: 'center', borderWidth: 2, borderColor: 'transparent',
   },
   petCardOn: { borderColor: PINK, backgroundColor: PINK_SOFT },
-  petImg: { width: 60, height: 60, marginBottom: 6 },
-  petName: { fontSize: 13, color: INK },
+  petImg: { width: 80, height: 80, marginBottom: 8 },
+  petName: { fontSize: 14, color: INK },
   petNameEn: { fontSize: 12, color: MUTED, fontWeight: '600', marginTop: 2 },
   tipBox: { backgroundColor: PINK_SOFT, borderRadius: 12, padding: 12, marginTop: 8, width: '100%' },
   tipTxt: { fontSize: 13, color: INK, textAlign: 'center', fontWeight: '500', lineHeight: 19 },
@@ -279,13 +305,20 @@ const s = StyleSheet.create({
   diffCheck: { fontSize: 18, color: PINK, fontWeight: '800' },
 
   previewLab: { fontSize: 12, color: MUTED, fontWeight: '700', marginBottom: 8, alignSelf: 'flex-start' },
-  tabsPreview: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignSelf: 'flex-start' },
-  tabChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4,
+  tabsPreview: { width: '100%', flexDirection: 'column', gap: 8, alignSelf: 'flex-start' },
+  tabRow: { flexDirection: 'row', gap: 8, justifyContent: 'center' },
+  tabOval: {
+    flex: 1,
+    flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 999,
+    paddingVertical: 10, paddingHorizontal: 6,
+    borderWidth: 2, borderColor: PINK_SOFT,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
   },
-  tabEmoji: { fontSize: 12 },
-  tabName: { fontSize: 11, color: INK, fontWeight: '700' },
+  tabEmoji: { fontSize: 20, marginBottom: 2 },
+  tabOvalName: { fontSize: 11, color: INK, fontWeight: '800' },
+  tabOvalDesc: { fontSize: 9, color: MUTED, fontWeight: '600', marginTop: 1 },
 
   bottomBar: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 28, backgroundColor: CREAM, borderTopWidth: 1, borderTopColor: '#f5e8de' },
   ctaBtn: { backgroundColor: PINK, paddingVertical: 16, borderRadius: 18, alignItems: 'center', shadowColor: PINK, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 3 },

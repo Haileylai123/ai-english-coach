@@ -3,7 +3,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://english-coach-backend.workers.dev';
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://hailey-admin.techforliving.net';
 
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
@@ -124,8 +124,29 @@ export async function aiExplain(payload: {
   return await request('/api/ai/explain', { method: 'POST', body: payload });
 }
 
-export async function getSubscription(): Promise<{ tier: string; features: string[]; expiresAt?: number }> {
+export async function getSubscription(): Promise<{
+  tier: string;
+  features: string[];
+  expiresAt?: number;
+  pricing?: { pro: { monthly: number; currency: string; symbol: string }; premium: { monthly: number; currency: string; symbol: string } };
+}> {
   return await request('/api/subscription');
+}
+
+export async function startCheckout(payload: { tier: 'pro' | 'premium'; period?: 'monthly' | 'yearly' }): Promise<{
+  checkoutUrl: string;
+  sessionId: string;
+  note?: string;
+}> {
+  return await request('/api/subscription/checkout', { method: 'POST', body: payload });
+}
+
+export async function devUpgrade(tier: 'pro' | 'premium'): Promise<{ ok: boolean; tier: string; expiresAt: number }> {
+  return await request('/api/subscription/dev-upgrade', { method: 'POST', body: { tier } });
+}
+
+export async function cancelSubscription(): Promise<{ ok: boolean; note?: string }> {
+  return await request('/api/subscription/cancel', { method: 'POST', body: {} });
 }
 
 // ── Push notifications ──
@@ -148,6 +169,193 @@ export async function unregisterPushToken(token: string): Promise<void> {
 
 export async function sendTestPush(): Promise<{ sent: number; errors: number }> {
   return await request('/api/notifications/test', { method: 'POST', body: {} });
+}
+
+// ── Text-to-Speech (Minimax via backend) ──
+
+export type TtsVoiceKey =
+  | 'en_warm_man'
+  | 'en_warm_woman'
+  | 'en_excited_man'
+  | 'zh_male'
+  | 'zh_female'
+  | 'zh_business';
+
+export interface TtsVoice {
+  key: TtsVoiceKey;
+  id: string;
+  label: string;
+  language: 'en' | 'zh';
+}
+
+export const TTS_VOICES: TtsVoice[] = [
+  { key: 'en_warm_woman', id: 'English_Graceful_Lady', label: 'Grace (English, warm woman)', language: 'en' },
+  { key: 'en_warm_man', id: 'English_Trustworth_Man', label: 'Caleb (English, warm man)', language: 'en' },
+  { key: 'en_excited_man', id: 'English_PassionateWarrior', label: 'Marcus (English, energetic)', language: 'en' },
+  { key: 'zh_female', id: 'female-shaonv', label: '小柔 (廣東話/中文, 女)', language: 'zh' },
+  { key: 'zh_male', id: 'male-qn-qingse', label: '小青 (中文, 男)', language: 'zh' },
+  { key: 'zh_business', id: 'presenter_male', label: '主播 (中文, 專業)', language: 'zh' },
+];
+
+export async function listTtsVoices(): Promise<TtsVoice[]> {
+  try {
+    const data = await request<{ voices: { key: TtsVoiceKey; id: string }[] }>(
+      '/api/tts/voices',
+      { auth: true },
+    );
+    return TTS_VOICES.filter(v => data.voices.some(dv => dv.key === v.key));
+  } catch {
+    return TTS_VOICES;
+  }
+}
+
+/**
+ * Synthesise text via backend → returns an R2-cached MP3 URL (no auth needed for fetch).
+ * The URL is cacheable for 24h by the backend.
+ */
+export async function synthesiseSpeech(
+  text: string,
+  voiceKey: TtsVoiceKey = 'en_warm_woman',
+  speed = 1.0,
+): Promise<string> {
+  const path = `/api/tts/speak`;
+  const qs = new URLSearchParams({ text, voice: voiceKey, speed: String(speed) });
+  // Return URL pointing to backend — auth header is not required since we have token
+  // But R2 cache returns audio/mpeg; mobile fetches via fetch with bearer header.
+  // For simple playback we encode token in URL — but that's not secure. Better: caller
+  // uses speakWithAudio() which fetches the bytes via fetch with auth.
+  return `${API_BASE}${path}?${qs.toString()}`;
+}
+
+/**
+ * Fetch TTS audio bytes with authentication.
+ * Returns local file:// URI ready for expo-av.
+ */
+export async function fetchTtsAudio(
+  text: string,
+  voiceKey: TtsVoiceKey = 'en_warm_woman',
+  speed = 1.0,
+): Promise<string> {
+  const res = await fetch(`${API_BASE}/api/tts/speak`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+    body: JSON.stringify({ text, voice: voiceKey, speed }),
+  });
+  if (!res.ok) {
+    throw new Error(`TTS failed (${res.status})`);
+  }
+  const blob = await res.blob();
+  // Convert blob to base64 data URI (expo-av can play file:// URIs and remote URLs)
+  return await blobToBase64(blob);
+}
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  // React Native's Blob doesn't support FileReader; use expo-file-system to write
+  // to cache dir and return the file:// URI.
+  const FileSystem = require('expo-file-system/legacy');
+  const path = `${FileSystem.cacheDirectory}tts-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp3`;
+  const reader = new FileReader();
+  return new Promise<string>((resolve, reject) => {
+    reader.onloadend = () => {
+      const base64 = (reader.result as string).split(',')[1];
+      FileSystem.writeAsStringAsync(path, base64, { encoding: 'base64' })
+        .then(() => resolve(`file://${path}`))
+        .catch(reject);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// ── Daily Challenge ──
+
+export interface DailyPrompt {
+  scene: string;
+  prompt_en: string;
+  prompt_zh_HK: string;
+  prompt_zh_CN: string;
+  prompt_ja: string;
+  prompt_ko: string;
+}
+
+export interface DailyChallenge {
+  date: string;
+  scene: string;
+  prompt: DailyPrompt;
+  promptLocalized: string;
+  myCompletion: { score: number; shared: number } | null;
+}
+
+export interface LeaderboardEntry {
+  user_id: string;
+  display_name: string | null;
+  locale: string | null;
+  score: number;
+  market: string | null;
+  scene: string;
+}
+
+export interface MarketStat {
+  market: string;
+  count: number;
+  avg_score: number;
+  top_score: number;
+}
+
+export interface DailyStreak {
+  current: number;
+  longest: number;
+  lastCompleted: string | null;
+  totalDays: number;
+}
+
+export async function getDailyChallenge(locale?: string): Promise<DailyChallenge> {
+  return await request(
+    `/api/daily-challenge/today${locale ? `?locale=${encodeURIComponent(locale)}` : ''}`,
+    { auth: false },
+  );
+}
+
+export async function submitDailyChallenge(payload: {
+  score: number;
+  scene?: string;
+  date?: string;
+  durationMs?: number;
+  transcript?: string;
+  audioUrl?: string;
+}): Promise<{ ok: boolean; score: number; rank: number; totalToday: number }> {
+  return await request('/api/daily-challenge/complete', { method: 'POST', body: payload });
+}
+
+export async function getLeaderboard(params: {
+  date?: string;
+  scope?: 'global' | 'market';
+  market?: string;
+  limit?: number;
+}): Promise<{
+  date: string;
+  scope: string;
+  market: string;
+  leaderboard: LeaderboardEntry[];
+  marketStats: MarketStat[];
+}> {
+  const qs = new URLSearchParams();
+  if (params.date) qs.set('date', params.date);
+  if (params.scope) qs.set('scope', params.scope);
+  if (params.market) qs.set('market', params.market);
+  if (params.limit) qs.set('limit', String(params.limit));
+  return await request(`/api/daily-challenge/leaderboard?${qs}`, { auth: false });
+}
+
+export async function getDailyStreak(): Promise<DailyStreak> {
+  return await request('/api/daily-challenge/streak');
+}
+
+export async function getDailyHistory(): Promise<{ history: Array<{ challenge_date: string; scene: string; score: number; market: string; shared: number; created_at: number }> }> {
+  return await request('/api/daily-challenge/my-history');
 }
 
 // ── High-level sync (called from practice flow) ──

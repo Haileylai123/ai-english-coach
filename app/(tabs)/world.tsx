@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image, Animated, Easing, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image, Animated, Easing, TextInput, Alert, Modal, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useStore } from '../../services/store';
 import { useI18n } from '../../services/i18n';
 import { ACHIEVEMENTS } from '../../services/emotions';
+import { FURNITURE_SPECS, FurnitureSlot, itemsForSlot, slotPickerTitle } from '../../services/furniture';
+import OverflowMenu from '../../components/OverflowMenu';
 
 const { width: W } = Dimensions.get('window');
 const F = { fontFamily: 'Nunito_400Regular' };
@@ -20,6 +22,10 @@ const MUTED = '#b8a89a';
 
 const COIN_SRC = require('../../assets/icons/nav-shop.png');
 const PET_ROOM_SRC = require('../../assets/icons/pet-room.png');
+const BG_GARDEN_SRC = require('../../assets/icons/bg-garden.png');
+const BG_COZY_SRC = require('../../assets/icons/bg-cozy.png');
+const BG_BEACH_SRC = require('../../assets/icons/bg-beach.png');
+const BG_FOREST_SRC = require('../../assets/icons/bg-forest.png');
 const PET_CAT_SRC = require('../../assets/icons/pet-cat.png');
 const PET_PENGUIN_SRC = require('../../assets/icons/pet-penguin.png');
 const PET_FOX_SRC = require('../../assets/icons/pet-fox.png');
@@ -56,10 +62,19 @@ const OUTFITS: Record<string, string> = {
 };
 
 const BG_COLORS: Record<string, { bg: string; wall: string; floor: string; name: string }> = {
-  garden: { bg: '#e8f5e9', wall: '#c8e6c9', floor: '#a5d6a7', name: 'Garden' },
-  cozy: { bg: '#fff3e0', wall: '#ffe0b2', floor: '#ffcc80', name: 'Cozy Room' },
-  beach: { bg: '#e0f7fa', wall: '#b2ebf2', floor: '#ffe082', name: 'Beach' },
-  forest: { bg: '#e8f5e9', wall: '#a5d6a7', floor: '#795548', name: 'Forest' },
+  default: { bg: '#ffe4d6', wall: '#ffd0b8', floor: '#ffb89a', name: 'Default Room' },
+  garden:  { bg: '#e8f5e9', wall: '#c8e6c9', floor: '#a5d6a7', name: 'Garden' },
+  cozy:    { bg: '#fff3e0', wall: '#ffe0b2', floor: '#ffcc80', name: 'Cozy Room' },
+  beach:   { bg: '#e0f7fa', wall: '#b2ebf2', floor: '#ffe082', name: 'Beach' },
+  forest:  { bg: '#e8f5e9', wall: '#a5d6a7', floor: '#795548', name: 'Forest' },
+};
+
+const BG_IMG: Record<string, any> = {
+  default: PET_ROOM_SRC,    // original pinkish room
+  garden:  BG_GARDEN_SRC,
+  cozy:    BG_COZY_SRC,
+  beach:   BG_BEACH_SRC,
+  forest:  BG_FOREST_SRC,
 };
 
 const FURN_IMG: Record<string, any> = {
@@ -83,6 +98,9 @@ export default function WorldScreen() {
   const [showPets, setShowPets] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(state.petName);
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Which slot is the user currently picking an item for? null = closed
+  const [slotPickerFor, setSlotPickerFor] = useState<FurnitureSlot | null>(null);
 
   // Pet decay every 60s
   useEffect(() => {
@@ -106,7 +124,7 @@ export default function WorldScreen() {
   }, [floatY]);
 
   const pet = PETS.find(p => p.id === state.activePet) || PETS[0];
-  const bg = BG_COLORS[state.petBackground || 'garden'];
+  const bg = BG_COLORS[state.petBackground || 'default'];
 
   const commitName = () => {
     const next = nameDraft.trim();
@@ -143,14 +161,27 @@ export default function WorldScreen() {
 
   const recentHistory = [...state.analysisHistory].reverse().slice(0, 5);
 
+  // Pet sits 4px above the bed (when bed is placed), otherwise on the floor
+  const bedItemId = state.petRoom.bed;
+  const bedSpec = bedItemId ? FURNITURE_SPECS[bedItemId] : null;
+  const bedFit = bedSpec
+    ? Math.min(bedSpec.height * (SLOT_SCALE.bed ?? 1), SLOT_MAX.bed.h)
+    : 0;
+  const petBottom = bedSpec ? 14 + bedFit + 4 : 60;
+
   return (
     <View style={st.root}>
       {/* Title row */}
       <View style={st.titleRow}>
         <Text style={[st.title, FX]}>My Pet World</Text>
-        <View style={st.coinChip}>
-          <Image source={COIN_SRC} style={{ width: 18, height: 18 }} resizeMode="contain" />
-          <Text style={[st.coinVal, FB]}>{state.petCoins}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={st.coinChip}>
+            <Image source={COIN_SRC} style={{ width: 18, height: 18 }} resizeMode="contain" />
+            <Text style={[st.coinVal, FB]}>{state.petCoins}</Text>
+          </View>
+          <TouchableOpacity style={st.menuBtn} onPress={() => setMenuOpen(true)} activeOpacity={0.7}>
+            <Text style={st.menuBtnTxt}>⋯</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -173,11 +204,15 @@ export default function WorldScreen() {
       <ScrollView contentContainerStyle={st.body} showsVerticalScrollIndicator={false}>
         {tab === 'pets' && (
           <>
-            {/* Pet house background */}
+            {/* Pet house background — driven by state.petBackground */}
             <View style={st.house}>
-              <Image source={PET_ROOM_SRC} style={st.roomImg} resizeMode="cover" />
+              <Image
+                source={BG_IMG[state.petBackground || 'default'] || PET_ROOM_SRC}
+                style={st.roomImg}
+                resizeMode="cover"
+              />
               <View style={st.brightOverlay} />
-              <Animated.View style={[st.petInHouse, { transform: [{ translateY: floatY }] }]}>
+              <Animated.View style={[st.petInHouse, { bottom: petBottom, transform: [{ translateY: floatY }] }]}>
                 {PET_IMG[pet.id] ? (
                   <Image source={PET_IMG[pet.id]} style={st.petImg} resizeMode="contain" />
                 ) : (
@@ -185,12 +220,18 @@ export default function WorldScreen() {
                 )}
                 {state.petOutfit && <Text style={st.outfit}>{OUTFITS[state.petOutfit]}</Text>}
               </Animated.View>
-              <View style={st.furnLayer}>
-                {state.petFurniture.slice(0, 3).map((f, i) => (
-                  FURN_IMG[f] ? (
-                    <Image key={i} source={FURN_IMG[f]} style={[st.furnImg, { left: 12 + i * 38, bottom: 6 }]} resizeMode="contain" />
-                  ) : null
-                ))}
+              <View style={st.furnLayer} pointerEvents="box-none">
+                {/* Slot: floor (full-width rug) — rendered first so bed sits on top */}
+                <RoomSlot slotId="floor" onPick={(id) => setSlotPickerFor(id)} />
+                {/* Slot: bed (big bottom-center, sits on top of rug) */}
+                <RoomSlot slotId="bed" onPick={(id) => setSlotPickerFor(id)} />
+                {/* Slot: table (mid-height surface) */}
+                <RoomSlot slotId="table" onPick={(id) => setSlotPickerFor(id)} />
+                {/* Four corner slots — user picks which corner */}
+                <RoomSlot slotId="topLeft" onPick={(id) => setSlotPickerFor(id)} />
+                <RoomSlot slotId="topRight" onPick={(id) => setSlotPickerFor(id)} />
+                <RoomSlot slotId="bottomLeft" onPick={(id) => setSlotPickerFor(id)} />
+                <RoomSlot slotId="bottomRight" onPick={(id) => setSlotPickerFor(id)} />
               </View>
             </View>
 
@@ -335,7 +376,163 @@ export default function WorldScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <OverflowMenu visible={menuOpen} onClose={() => setMenuOpen(false)} />
+
+      {/* Room slot picker sheet */}
+      <Modal visible={!!slotPickerFor} transparent animationType="slide" onRequestClose={() => setSlotPickerFor(null)} statusBarTranslucent>
+        <Pressable style={st.slotSheetBackdrop} onPress={() => setSlotPickerFor(null)}>
+          <Pressable style={st.slotSheet} onPress={(e) => e.stopPropagation()}>
+            <View style={st.slotSheetHandle} />
+            <View style={st.slotSheetHeader}>
+              <View>
+                <Text style={[st.slotSheetTitle, FB]}>
+                  {slotPickerFor && slotPickerTitle(slotPickerFor)}
+                </Text>
+                <Text style={st.slotSheetSub}>撳下面揀一件 · 或揀「清空」</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSlotPickerFor(null)} style={st.slotSheetClose} activeOpacity={0.7}>
+                <Text style={st.slotSheetCloseTxt}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ flexGrow: 0 }}>
+              {/* Empty option — clear slot */}
+              <TouchableOpacity
+                style={[st.slotOption, st.slotOptionEmpty]}
+                onPress={() => {
+                  if (slotPickerFor) dispatch({ type: 'CLEAR_ROOM_SLOT', payload: slotPickerFor });
+                  setSlotPickerFor(null);
+                }}
+                activeOpacity={0.85}
+              >
+                <View style={[st.slotOptionImg, { backgroundColor: '#f5e8de' }]}>
+                  <Text style={{ fontSize: 22 }}>🗑️</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.slotOptionEmptyTxt, FB]}>清空</Text>
+                  <Text style={st.slotOptionNameEn}>Empty slot</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Items for this slot (owned only) */}
+              {slotPickerFor && itemsForSlot(slotPickerFor).map(itemId => {
+                const owned = state.ownedItems.includes(itemId);
+                const spec = FURNITURE_SPECS[itemId];
+                return (
+                  <TouchableOpacity
+                    key={itemId}
+                    style={st.slotOption}
+                    onPress={() => {
+                      if (!owned) {
+                        Alert.alert('未擁有', '去 Shop 免費拎呢件啦！');
+                        return;
+                      }
+                      dispatch({ type: 'PLACE_ROOM_ITEM', payload: { slot: slotPickerFor, itemId } });
+                      setSlotPickerFor(null);
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <View style={st.slotOptionImg}>
+                      {FURN_IMG[itemId] ? (
+                        <Image source={FURN_IMG[itemId]} style={st.slotOptionImgInner} resizeMode="contain" />
+                      ) : (
+                        <Text style={{ fontSize: 22 }}>{spec?.emoji || '📦'}</Text>
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[st.slotOptionName, FB]}>
+                        {itemId} {owned ? '' : '🔒'}
+                      </Text>
+                      <Text style={st.slotOptionNameEn}>
+                        {owned ? '已擁有 · 撳即擺' : '未擁有 · 去 Shop 拎'}
+                      </Text>
+                    </View>
+                    {owned && state.petRoom[slotPickerFor] === itemId && (
+                      <Text style={{ color: '#7ec48b', fontWeight: '800' }}>✓ 用緊</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+              <View style={{ height: 16 }} />
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
+  );
+}
+
+/** Auto-scale items to fit the slot they ended up in */
+const SLOT_SCALE: Record<string, number> = {
+  bed: 1.0,        // bed slot is big, render at full size
+  floor: 1.0,      // floor is widest, full size
+  table: 0.8,      // table mid-height, slight down-scale
+  topLeft: 0.65, topRight: 0.65,
+  bottomLeft: 0.65, bottomRight: 0.65,
+};
+const SLOT_MAX: Record<string, { w: number; h: number }> = {
+  bed:         { w: 320, h: 175 },
+  floor:       { w: 320, h: 95 },
+  table:       { w: 64,  h: 72 },
+  topLeft:     { w: 50,  h: 50 },
+  topRight:    { w: 50,  h: 50 },
+  bottomLeft:  { w: 50,  h: 50 },
+  bottomRight: { w: 50,  h: 50 },
+};
+
+/** Renders one room slot at fixed position. Tap empty → open picker; tap filled → also open picker (swap). */
+function RoomSlot({ slotId, onPick }: { slotId: FurnitureSlot; onPick: (id: FurnitureSlot) => void }) {
+  const { state } = useStore();
+  const itemId = state.petRoom[slotId];
+  const spec = itemId ? FURNITURE_SPECS[itemId] : null;
+
+  const slotStyle =
+    slotId === 'bed' ? st.slotBed :
+    slotId === 'floor' ? st.slotFloor :
+    slotId === 'table' ? st.slotTable :
+    slotId === 'topLeft' ? st.slotTopLeft :
+    slotId === 'topRight' ? st.slotTopRight :
+    slotId === 'bottomLeft' ? st.slotBottomLeft :
+    st.slotBottomRight;
+
+  if (!itemId) {
+    const { w, h } = SLOT_MAX[slotId] || { w: 44, h: 44 };
+    return (
+      <TouchableOpacity
+        style={[st.roomSlot, slotStyle, st.slotEmpty, { width: w, height: h, borderRadius: 10 }]}
+        onPress={() => onPick(slotId)}
+        activeOpacity={0.7}
+      >
+        <Text style={st.slotEmptyPlus}>+</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  // Filled slot — auto-fit item into slot's max size
+  const scale = SLOT_SCALE[slotId] ?? 1;
+  const max = SLOT_MAX[slotId] || { w: 50, h: 50 };
+  const naturalW = spec?.width || 40;
+  const naturalH = spec?.height || 40;
+  const fitW = Math.min(naturalW * scale, max.w);
+  const fitH = Math.min(naturalH * scale, max.h);
+
+  return (
+    <TouchableOpacity
+      style={[st.roomSlot, slotStyle, { width: max.w, height: max.h }]}
+      onPress={() => onPick(slotId)}
+      activeOpacity={0.85}
+    >
+      {FURN_IMG[itemId] ? (
+        <Image
+          source={FURN_IMG[itemId]}
+          style={{ width: fitW, height: fitH }}
+          resizeMode="contain"
+        />
+      ) : (
+        <Text style={{ fontSize: 24 }}>{spec?.emoji || '📦'}</Text>
+      )}
+    </TouchableOpacity>
   );
 }
 
@@ -381,20 +578,61 @@ const st = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14,
   },
   coinVal: { fontSize: 14, color: INK },
+  menuBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  menuBtnTxt: { fontSize: 22, color: INK, fontWeight: '800', lineHeight: 24 },
   body: { paddingHorizontal: SIDE_PAD, paddingBottom: 20 },
 
   // House / pet area
   house: {
-    width: '100%', height: 258, borderRadius: 22, overflow: 'hidden',
+    width: '100%', height: 270, borderRadius: 22, overflow: 'hidden',
     backgroundColor: '#ffe4d6', marginBottom: 14, position: 'relative',
   },
   roomImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   brightOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.35)' },
-  petInHouse: { position: 'absolute', bottom: 28, left: 0, right: 0, alignItems: 'center' },
-  petImg: { width: 100, height: 100 },
+  petInHouse: { position: 'absolute', bottom: 60, left: 0, right: 0, alignItems: 'center' },
+  petImg: { width: 96, height: 96 },
   petEmoji: { fontSize: 64 },
   outfit: { fontSize: 22, position: 'absolute', top: -14, right: -28 },
-  furnLayer: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 40 },
+  furnLayer: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
+
+  // Room slot system
+  roomSlot: {
+    position: 'absolute',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  slotBed:         { bottom: 14, left: 0, right: 0, alignItems: 'center' },
+  slotFloor:       { bottom: 0, left: 6, right: 6, alignItems: 'center', justifyContent: 'flex-end' },
+  slotTable:       { bottom: 60, left: 0, right: 0, alignItems: 'center' },
+  slotTopLeft:     { top: 8, left: 12 },
+  slotTopRight:    { top: 8, right: 12 },
+  slotBottomLeft:  { bottom: 14, left: 14 },
+  slotBottomRight: { bottom: 14, right: 14 },
+  slotEmpty: {
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.55)', borderStyle: 'dashed',
+    borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  slotEmptyPlus: { fontSize: 20, color: 'rgba(255,255,255,0.8)', fontWeight: '800' },
+
+  // Slot picker sheet (bottom)
+  slotSheetBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  slotSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingTop: 10, paddingBottom: 30, maxHeight: '70%',
+  },
+  slotSheetHandle: { width: 42, height: 5, borderRadius: 3, backgroundColor: MUTED, alignSelf: 'center', marginTop: 6, marginBottom: 6 },
+  slotSheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
+  slotSheetTitle: { fontSize: 17, color: INK },
+  slotSheetSub: { fontSize: 12, color: MUTED, fontWeight: '600', marginTop: 2 },
+  slotSheetClose: { width: 32, height: 32, borderRadius: 16, backgroundColor: PINK_SOFT, alignItems: 'center', justifyContent: 'center' },
+  slotSheetCloseTxt: { fontSize: 14, color: PINK, fontWeight: '800' },
+  slotOption: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 12, marginHorizontal: 12, borderRadius: 14, marginBottom: 6, backgroundColor: '#fdf2ec' },
+  slotOptionEmpty: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#f5e8de' },
+  slotOptionImg: { width: 44, height: 44, backgroundColor: '#fff', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  slotOptionImgInner: { width: 38, height: 38 },
+  slotOptionName: { fontSize: 14, color: INK },
+  slotOptionNameEn: { fontSize: 11, color: MUTED, fontWeight: '600', marginTop: 1 },
+  slotOptionEmptyTxt: { fontSize: 13, color: SUBINK, fontWeight: '600' },
+
   furn: { position: 'absolute', fontSize: 18, opacity: 0.85 },
   furnImg: { position: 'absolute', width: 36, height: 36 },
 

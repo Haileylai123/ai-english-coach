@@ -99,6 +99,12 @@ export function checkAchievements(stats: {
   bestFluency: number;
   bestPronunciation: number;
   streak: number;
+  tedCount?: number;
+  keigoCount?: number;
+  izakayaCount?: number;
+  toeicCount?: number;
+  jobHuntJpCount?: number;
+  jobHuntKrCount?: number;
 }): Achievement[] {
   const unlocked: Achievement[] = [];
 

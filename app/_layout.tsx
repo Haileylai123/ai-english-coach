@@ -46,6 +46,18 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
           <Stack.Screen name="auth" />
+          <Stack.Screen name="call-analyzer" options={{ presentation: "modal" }} />
+          <Stack.Screen name="cat-charity" options={{ presentation: "modal" }} />
+          <Stack.Screen name="paywall" options={{ presentation: "modal" }} />
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="srs" />
+          <Stack.Screen name="skits" />
+          <Stack.Screen name="ted" />
+          <Stack.Screen name="history" />
+          <Stack.Screen name="leaderboard" />
+          <Stack.Screen name="settings" />
+          <Stack.Screen name="shop" />
+          <Stack.Screen name="daily-challenge" />
         </Stack>
       </I18nProvider>
     </StoreProvider>

@@ -242,7 +242,87 @@ export async function register(email: string, password: string, displayName?: st
 }
 
 // ---------------------------------------------------------------------------
-// 7. Content Generation — AI-generated course lessons
+// 7. Call/Meeting Analysis — Fluently-style deep analysis
+// ---------------------------------------------------------------------------
+
+export interface CallAnalysis {
+  transcript: string;
+  duration: number; // seconds
+  stats: {
+    totalWords: number;
+    uniqueWords: number;
+    wpm: number;           // words per minute
+    fillerCount: number;
+    fillerWords: string[];
+    longestPause: number;  // seconds (estimated)
+    sentenceCount: number;
+    avgSentenceLength: number;
+  };
+  fluency: { score: number; detail: string };
+  vocabulary: { score: number; detail: string; highlighted: string[] };
+  grammar: { score: number; detail: string; corrections: { original: string; correction: string; explain: string }[] };
+  overall: { score: number; level: string; summary: string };
+  suggestions: string[];    // 3-5 actionable improvement tips
+  strengths: string[];      // what they did well
+}
+
+const CALL_ANALYSIS_SYSTEM = `You are an expert English communication coach analyzing a real meeting or call transcript.
+The speaker is an English learner from Asia. They recorded their side of a meeting/call.
+
+Analyze the transcript and return a JSON object:
+{
+  "transcript": "<cleaned transcript>",
+  "stats": {
+    "totalWords": <number>,
+    "uniqueWords": <number>,
+    "wpm": <number, estimate from text length assuming normal pace>,
+    "fillerCount": <number of filler words like um, uh, like, you know, so, actually, basically>,
+    "fillerWords": ["<list of filler words found>"],
+    "sentenceCount": <number>,
+    "avgSentenceLength": <number>
+  },
+  "fluency": { "score": <0-100>, "detail": "<feedback on pace, flow, filler words>" },
+  "vocabulary": { "score": <0-100>, "detail": "<feedback>", "highlighted": ["<3-5 strong words used>"] },
+  "grammar": { "score": <0-100>, "detail": "<feedback>", "corrections": [{"original":"...","correction":"...","explain":"..."}] },
+  "overall": { "score": <0-100>, "level": "<CEFR A1-C2>", "summary": "<2-3 sentence overall assessment>" },
+  "suggestions": ["<3-5 specific, actionable things to work on for next meeting>"],
+  "strengths": ["<2-3 things they did well>"]
+}
+Be specific and actionable. Reference exact phrases from their transcript.
+If the transcript is very short (<30 words), note that more data would give better analysis.
+Return ONLY valid JSON.`;
+
+export async function analyzeCallTranscript(transcript: string, durationSec: number = 60): Promise<CallAnalysis> {
+  if (!DEEPSEEK_KEY) {
+    const words = transcript.split(/\s+/).length;
+    const unique = new Set(transcript.toLowerCase().match(/\b[a-z]+\b/g) || []).size;
+    return {
+      transcript,
+      duration: durationSec,
+      stats: { totalWords: words, uniqueWords: unique, wpm: Math.round(words / (durationSec / 60)), fillerCount: 0, fillerWords: [], longestPause: 0, sentenceCount: transcript.split(/[.!?]+/).length, avgSentenceLength: Math.round(words / Math.max(1, transcript.split(/[.!?]+/).length)) },
+      fluency: { score: 60, detail: 'Offline mode — basic stats only.' },
+      vocabulary: { score: 60, detail: 'Offline mode.', highlighted: [] },
+      grammar: { score: 60, detail: 'Offline mode.', corrections: [] },
+      overall: { score: 60, level: 'B1', summary: 'Offline analysis. Connect API for AI feedback.' },
+      suggestions: ['Set DEEPSEEK_API_KEY for AI-powered feedback', 'Record more meetings for better analysis'],
+      strengths: ['You completed a recording session!'],
+    };
+  }
+
+  const prompt = `Transcript (duration ~${Math.round(durationSec / 60)} min):\n\n"${transcript}"`;
+  const text = await deepseekChat(CALL_ANALYSIS_SYSTEM, prompt, { json: true, temperature: 0.3, maxTokens: 2048 });
+  return JSON.parse(text);
+}
+
+/** Analyze a meeting from an audio file — full pipeline */
+export async function analyzeMeeting(audioUri: string): Promise<CallAnalysis> {
+  const transcript = await transcribeAudio(audioUri);
+  // Rough duration estimate from audio file — use 60s default if unknown
+  return analyzeCallTranscript(transcript, 60);
+}
+
+// ---------------------------------------------------------------------------
+// 8. Content Generation — AI-generated course lessons
 // ---------------------------------------------------------------------------
 
 export async function generateLessonContent(
