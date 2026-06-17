@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Animated, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Dimensions } from 'react-native';
-import { Audio } from 'expo-av';
+// (expo-av removed — we now use webkitSpeechRecognition on web and backend Whisper on native)
 import { useStore } from '../../services/store';
 import { SCENARIOS, SceneId, Difficulty, getRandomPrompt } from '../../services/scenarios';
 import { transcribeAudio, analyzeTranscript, chatWithAI, hasAI, hasSTT } from '../../services/api';
@@ -8,6 +8,7 @@ import { analyzeSpeech } from '../../services/analyzer';
 import * as backend from '../../services/backend';
 import * as Speech from 'expo-speech';
 import { speak as ttsSpeak } from '../../services/tts';
+import { startSttSession } from '../../services/stt';
 
 const { width: W } = Dimensions.get('window');
 const PINK = '#e8927f';
@@ -46,6 +47,7 @@ export default function ChatScreen() {
   const [textInput, setTextInput] = useState('');
   const [showInput, setShowInput] = useState(false);
   const [lastAudioUri, setLastAudioUri] = useState<string | null>(null);
+  const [interimText, setInterimText] = useState('');
   const recRef = useRef<Audio.Recording | null>(null);
   const pulse = useRef(new Animated.Value(1)).current;
   const scrollRef = useRef<ScrollView>(null);
@@ -114,63 +116,45 @@ export default function ChatScreen() {
 
   const startRec = useCallback(async () => {
     setRecording(true);
+    setInterimText('');
     try {
-      await Audio.requestPermissionsAsync();
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const rec = new Audio.Recording();
-      await rec.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      await rec.startAsync();
-      recRef.current = rec;
-    } catch { setRecording(false); setShowInput(true); }
-  }, []);
+      const lang = state.account.locale?.startsWith('zh') ? 'zh-HK' : 'en-US';
+      const session = await startSttSession({
+        language: lang,
+        onInterim: (txt) => setInterimText(txt),
+        onError: (e) => {
+          console.warn('[STT]', e?.message);
+        },
+      });
+      recRef.current = session as any;
+    } catch (e: any) {
+      console.warn('[STT] start failed:', e?.message);
+      setRecording(false);
+    }
+  }, [state.account.locale]);
 
   const stopRec = useCallback(async () => {
     setRecording(false);
-    if (!recRef.current) { return; }
+    const session: any = recRef.current;
+    recRef.current = null;
+    if (!session || typeof session.stop !== 'function') { setShowInput(true); return; }
+
+    setLoading(true);
+    setInterimText('');
     try {
-      const status = await recRef.current.getStatusAsync();
-      const durMs = status?.durationMillis ?? 0;
-      await recRef.current.stopAndUnloadAsync();
-      const uri = recRef.current.getURI();
-      recRef.current = null;
-
-      if (!uri || durMs < 400) {
-        // Accidental tap — just reopen input
+      const text = await session.stop();
+      if (text && text.trim()) {
+        await analyze(text.trim());
+      } else {
         setShowInput(true);
-        return;
       }
-
-      // If logged in, try backend Whisper STT. Falls back to text input if it fails.
-      if (state.account.loggedIn) {
-        setLoading(true);
-        try {
-          const lang = state.account.locale?.startsWith('zh') ? 'zh' : 'en';
-          const r = await backend.transcribeViaBackend(uri, lang);
-          if (r.text && r.text.trim()) {
-            await analyze(r.text.trim());
-            return;
-          }
-        } catch (e: any) {
-          // Show error briefly, then fall back to text input with audio URI saved
-          setLastAudioUri(uri);
-          setShowInput(true);
-          Alert.alert(
-            state.locale === 'zh-HK' ? '語音識別失敗' : 'Speech recognition failed',
-            e?.message || 'Please type what you said',
-          );
-          setLoading(false);
-          return;
-        }
-        setLoading(false);
-      }
-
-      // Not logged in OR STT returned empty — fall back to text input
-      setLastAudioUri(uri);
+    } catch (e: any) {
+      console.warn('[STT] stop failed:', e?.message);
       setShowInput(true);
-    } catch {
-      setShowInput(true);
+    } finally {
+      setLoading(false);
     }
-  }, [scene, diff, state.account.loggedIn, state.account.locale, state.locale]);
+  }, [scene, diff, state.account.loggedIn, state.account.locale]);
 
   // Tap-to-toggle fallback for users who don't want hold-to-record
   const toggleRec = useCallback(async () => {
@@ -262,10 +246,7 @@ export default function ChatScreen() {
             </View>
             <Pressable
               style={[st.recBtn, recording&&st.recBtnOn]}
-              onPressIn={startRec}
-              onPressOut={stopRec}
               onPress={toggleRec}
-              delayLongPress={300}
             >
               <Animated.View style={[st.recInner,{transform:[{scale:pulse}]}]}>
                 <Text style={st.recIcon}>{recording?'🔴':'🎤'}</Text>
@@ -273,9 +254,14 @@ export default function ChatScreen() {
             </Pressable>
             <Text style={st.recHint}>
               {recording
-                ? (state.locale==='zh-HK' ? '講緊嘢 · 放手停止' : 'Recording · release to stop')
-                : (state.locale==='zh-HK' ? '按住講 · 或輕撳一下' : 'Hold to speak · or tap')}
+                ? (state.locale==='zh-HK' ? '講緊嘢 · 撳停止' : 'Listening · tap to stop')
+                : (state.locale==='zh-HK' ? '撳一下開始講' : 'Tap to start speaking')}
             </Text>
+            {recording && interimText ? (
+              <Text style={[st.recHint, { color: PINK, fontStyle: 'italic' }]} numberOfLines={2}>
+                "{interimText}"
+              </Text>
+            ) : null}
           </>
         )}
         {showInput && !loading && (

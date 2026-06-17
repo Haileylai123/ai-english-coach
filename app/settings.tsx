@@ -59,8 +59,9 @@ export default function SettingsScreen() {
           ? '你好！欢迎来到英语教练。我是你的AI口语伙伴。'
           : '你好！歡迎嚟到 English Coach。我係你嘅 AI 會話伙伴。';
       await ttsSpeak(sample, ttsVoice, { speed: 1.0 });
+      Alert.alert('TTS OK ✅', `Played voice: ${ttsVoice}`);
     } catch (e: any) {
-      Alert.alert('TTS Error', e?.message || 'Failed to play voice');
+      Alert.alert('TTS Error ❌', `${e?.message || 'Failed'}\n\nPlatform: ${(window as any)?.navigator?.userAgent?.includes('Safari') ? 'Safari' : 'Other'}`);
     } finally {
       setTtsTesting(false);
     }
