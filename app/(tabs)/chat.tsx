@@ -123,19 +123,34 @@ export default function ChatScreen() {
     setRecording(false);
     if (!recRef.current) { setShowInput(true); return; }
     try {
+      // Wait briefly — if duration < 300ms, treat as accidental press and reopen input
+      const status = await recRef.current.getStatusAsync();
+      const durMs = status?.durationMillis ?? 0;
       await recRef.current.stopAndUnloadAsync();
       const uri = recRef.current.getURI();
       recRef.current = null;
-      if (!uri) { setShowInput(true); return; }
 
-      // Try backend STT (Minimax doesn't do STT, so this falls back to expo-speech).
-      // For now: always pop text input so the user can type what they said.
-      // If we later add STT to backend, this branch will auto-use it.
-      setShowInput(true);
-      // Optionally save the audio URI so user can replay or upload
+      if (!uri || durMs < 300) {
+        // Accidental tap — just reopen text input
+        setShowInput(true);
+        return;
+      }
+
+      // Save audio + always pop text input (no STT key configured).
+      // When backend gains STT, swap this for: const txt = await backend.transcribeAudio(uri); await analyze(txt);
       setLastAudioUri(uri);
+      setShowInput(true);
     } catch { setShowInput(true); }
   }, [scene, diff]);
+
+  // Tap-to-toggle fallback for users who don't want hold-to-record
+  const toggleRec = useCallback(async () => {
+    if (recording) {
+      await stopRec();
+    } else {
+      await startRec();
+    }
+  }, [recording, startRec, stopRec]);
 
   const submitText = () => { if (textInput.trim()) { analyze(textInput.trim()); setTextInput(''); } };
 
@@ -216,12 +231,22 @@ export default function ChatScreen() {
                 </Pressable>
               ))}
             </View>
-            <Pressable style={[st.recBtn, recording&&st.recBtnOn]} onPressIn={startRec} onPressOut={stopRec}>
+            <Pressable
+              style={[st.recBtn, recording&&st.recBtnOn]}
+              onPressIn={startRec}
+              onPressOut={stopRec}
+              onPress={toggleRec}
+              delayLongPress={300}
+            >
               <Animated.View style={[st.recInner,{transform:[{scale:pulse}]}]}>
                 <Text style={st.recIcon}>{recording?'🔴':'🎤'}</Text>
               </Animated.View>
             </Pressable>
-            <Text style={st.recHint}>Hold to speak · 按住講</Text>
+            <Text style={st.recHint}>
+              {recording
+                ? (state.locale==='zh-HK' ? '講緊嘢 · 放手停止' : 'Recording · release to stop')
+                : (state.locale==='zh-HK' ? '按住講 · 或輕撳一下' : 'Hold to speak · or tap')}
+            </Text>
           </>
         )}
         {showInput && !loading && (
