@@ -32,13 +32,16 @@ export async function speak(
 ): Promise<void> {
   if (!text || !text.trim()) return;
   const voice = voiceKey || (await getPreferredVoice());
+  console.log('[TTS] speak called — text length:', text.length, 'voice:', voice);
 
   try {
     const audioUri = await fetchTtsAudio(text, voice, opts?.speed ?? 1.0);
+    console.log('[TTS] got audio URI from backend:', audioUri.slice(0, 60));
     await playAudioUri(audioUri, opts);
+    console.log('[TTS] playing Minimax audio ✅');
   } catch (e: any) {
+    console.warn('[TTS] backend failed, falling back to expo-speech:', e?.message);
     if (opts?.onError) opts.onError(e);
-    // Fallback to expo-speech if backend unreachable
     try {
       const Speech = await import('expo-speech');
       Speech.stop();
