@@ -7,6 +7,7 @@ import { transcribeAudio, analyzeTranscript, chatWithAI, hasAI, hasSTT } from '.
 import { analyzeSpeech } from '../../services/analyzer';
 import * as backend from '../../services/backend';
 import * as Speech from 'expo-speech';
+import { speak as ttsSpeak } from '../../services/tts';
 
 const { width: W } = Dimensions.get('window');
 const PINK = '#e8927f';
@@ -101,7 +102,11 @@ export default function ChatScreen() {
       dispatch({ type: 'ADD_XP', payload: 10 + Math.floor(r.overall.score / 10) });
       const reply = (chat && chat.reply) || 'Great! Keep going!';
       setMsgs(prev => [...prev, { role: 'ai', text: reply, score: r.overall.score, level: r.overall.level, bars: { fluency: r.fluency.score, vocabulary: r.vocabulary.score, grammar: r.grammar.score } }]);
-      Speech.speak(reply, { language: 'en', rate: 0.85 });
+      // Use backend Minimax TTS (English native voice user picked in Settings).
+      // Falls back to expo-speech if backend unreachable.
+      ttsSpeak(reply, undefined, { speed: 0.95 }).catch(() => {
+        Speech.speak(reply, { language: 'en', rate: 0.85 });
+      });
     } catch {
       setMsgs(prev => [...prev, { role: 'ai', text: 'Sorry, try again!' }]);
     } finally { setLoading(false); }
