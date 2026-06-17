@@ -177,26 +177,19 @@ export type TtsVoiceKey =
   | 'en_warm_man'
   | 'en_warm_woman'
   | 'en_upbeat_woman'
-  | 'en_excited_man'
-  | 'zh_male'
-  | 'zh_female'
-  | 'zh_business';
+  | 'en_excited_man';
 
 export interface TtsVoice {
   key: TtsVoiceKey;
   id: string;
   label: string;
-  language: 'en' | 'zh';
 }
 
 export const TTS_VOICES: TtsVoice[] = [
-  { key: 'en_warm_woman', id: 'English_Graceful_Lady', label: 'Grace (English, warm woman)', language: 'en' },
-  { key: 'en_warm_man', id: 'English_Trustworth_Man', label: 'Caleb (English, warm man)', language: 'en' },
-  { key: 'en_upbeat_woman', id: 'English_Upbeat_Woman', label: 'Upbeat (English, energetic woman)', language: 'en' },
-  { key: 'en_excited_man', id: 'English_PassionateWarrior', label: 'Marcus (English, energetic man)', language: 'en' },
-  { key: 'zh_female', id: 'female-shaonv', label: '小柔 (廣東話/中文, 女)', language: 'zh' },
-  { key: 'zh_male', id: 'male-qn-qingse', label: '小青 (中文, 男)', language: 'zh' },
-  { key: 'zh_business', id: 'presenter_male', label: '主播 (中文, 專業)', language: 'zh' },
+  { key: 'en_warm_woman', id: 'English_Graceful_Lady', label: 'Grace — warm woman' },
+  { key: 'en_upbeat_woman', id: 'English_Upbeat_Woman', label: 'Upbeat — energetic woman' },
+  { key: 'en_warm_man', id: 'English_Trustworth_Man', label: 'Caleb — warm man' },
+  { key: 'en_excited_man', id: 'English_PassionateWarrior', label: 'Marcus — energetic man' },
 ];
 
 export async function listTtsVoices(): Promise<TtsVoice[]> {

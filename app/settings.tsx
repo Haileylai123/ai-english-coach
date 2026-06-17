@@ -274,7 +274,7 @@ export default function SettingsScreen() {
               onPress={() => handleSelectVoice(v.key)}
               disabled={ttsTesting}
             >
-              <Text style={s.rowFlag}>{v.language === 'en' ? '🇺🇸' : '🇭🇰'}</Text>
+              <Text style={s.rowFlag}>🎙️</Text>
               <View style={{ flex: 1 }}>
                 <Text style={[s.rowLabel, ttsVoice === v.key && s.rowLabelOn]}>
                   {v.label}
