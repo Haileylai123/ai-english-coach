@@ -70,6 +70,16 @@ export default function SettingsScreen() {
   const handleSelectVoice = async (key: TtsVoiceKey) => {
     setTtsVoice(key);
     await setPreferredVoice(key);
+    // Auto-play sample so user hears the change immediately
+    setTtsTesting(true);
+    try {
+      const sample = 'Hi! This is ' + key.replace(/_/g, ' ') + '.';
+      await ttsSpeak(sample, key, { speed: 1.0 });
+    } catch (e: any) {
+      Alert.alert('Voice change failed', e?.message || 'Try again');
+    } finally {
+      setTtsTesting(false);
+    }
   };
 
   const handleSync = async () => {
