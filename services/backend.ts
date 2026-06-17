@@ -3,7 +3,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://hailey-admin.techforliving.net';
+const API_BASE = 'https://hailey-admin.techforliving.net';
 
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
